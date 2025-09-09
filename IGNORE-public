@@ -1,0 +1,26 @@
+<!DOCTYPE html>
+<html kang="en>
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0"
+    <title> A Well-Structured Webpage</title>
+    <style>
+        body {font-family: 'inter', sans-serif;}
+    </style>
+    <script>
+      alert('hi')
+      //document.getElementById('myDiv01').innerHTML = 'Hi'
+    </script>
+</head>
+<body>
+
+<h1 alignt=center>t1a01-proper-webpage-hayden.html</h1>
+
+welcome<br>
+
+
+
+<div id="myDiv01"> not hello </div>
+
+</body>
+</html>
