@@ -16,12 +16,21 @@ Event:<input type=button value="myEvent squares" onclick="{
 
 Output:<span id="mySpan01">...</span>
 
-<script>
-  let time = new Date().getHours();
-  let greeting;
+<!DOCTYPE html>
+<html>
+<body>
 
-  if (time < 12) {
-    greeting = "Good morning!";
+<p id="message"></p>
+
+<script>
+  let hour = 10;
+
+  if (hour < 12) {
+    document.getElementById("message").innerText = "Good morning!";
   } else {
-    greeting = "Good afternoon!";
+    document.getElementById("message").innerText = "Good afternoon!";
   }
+</script>
+
+</body>
+</html>
