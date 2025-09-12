@@ -34,3 +34,44 @@ Output:<span id="mySpan01">...</span>
 
 </body>
 </html>
+
+
+<!DOCTYPE html>
+<html>
+<head>
+  <title>Square Function Example</title>
+  <script>
+    function mySquareFunction() {
+      let myIn01 = parseFloat(document.getElementById('myNum01').value);
+      let myAnswer = myIn01 * myIn01; // Fixed: myOn01 was a typo
+      document.getElementById('mySpan01').innerHTML = myIn01 + ' squared = ' + myAnswer;
+    }
+
+    // Show greeting message
+    window.onload = function () {
+      let hour = new Date().getHours(); // More accurate time
+      if (hour < 12) {
+        document.getElementById("message").innerText = "Good morning!";
+      } else {
+        document.getElementById("message").innerText = "Good afternoon!";
+      }
+    }
+  </script>
+</head>
+
+<body>
+
+  <h2 align="center">t1a02-video-flace-hayden.html</h2>
+
+  <p>Input: <input id="myNum01" type="number" value="4"></p>
+
+  <p>Event:
+    <input type="button" value="Square It!" onclick="mySquareFunction()">
+  </p>
+
+  <p>Output: <span id="mySpan01">...</span></p>
+
+  <p id="message"></p>
+
+</body>
+</html>
