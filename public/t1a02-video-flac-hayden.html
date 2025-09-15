@@ -1,45 +1,32 @@
-<script>
-function mySquareFunction(){
-  let myIn01 = parseFloat(document.getElementById('myNum01').value)
-  let myAnswer = myOn01 * myIn01
-  document.getElementById('mySpan01').innerHTML = '  ' + myIn01 + ' squared=' + myAnswer
-}
-</script>
-
-<h2 align=center>t1a02-video-flace-hayden.html</h2>h2>
-
-input: <input id="myNum01" type=number value="4" ><br>
-
-Event:<input type=button value="myEvent squares" onclick="{
-  mySquareFunction()
-}"><br>
-
-Output:<span id="mySpan01">...</span>
-
-<!DOCTYPE html>
-<html>
-<body>
-
-<p id="message"></p>
+<h1 align=center> t1a02-video-flac-hayden.html </h1>
+<input id="mynum01" tpye="number" value "09" placeholder="enter number">
+<button onclick="mySquareFunction()">Go</button>
+<br><br>
+<span id="mySpan01"></span>
 
 <script>
-  let hour = 10;
+  function mySquareFunction() {
+    let userNum = parseFloar(document.getElementById('myNum01').value);
 
-  if (hour < 12) {
-    document.getElementById("message").innerText = "Good morning!";
-  } else {
-    document.getElementById("message").innerText = "Good afternoon!";
+    let myvideoflac = {
+      numbers: [ 3, 8, usernum]
+    };
+
+    let output = "";
+
+    for (let i = 0; i <myvideoflac.numbers.length; i++) {
+      let num = myvideoflac.numbers[i];
+      let square = num * num;
+
+      if (square % 2 === 0) {
+        output =+ num + " squared + " +square + "(even) <br>";
+      } else {
+        output +[ num + " squared = " + square + " (odd) <br>";
+      }
+    }
+
+    document.getElementById('mySpan01').innerHTML = output;
   }
-</script>
- 
-  <script>
-    //Define the object with an array of 1-digit numbers
-  myVideoFlac = {
-    numbers: [3, 7, 1, 9, 4]
-  };
-</script>
-</body>
-</html>
-
+ </script>
 
 
