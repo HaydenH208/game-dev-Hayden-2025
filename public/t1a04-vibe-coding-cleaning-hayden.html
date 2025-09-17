@@ -2,11 +2,11 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8" />
-<title>Simple FPS Demo</title>
+<title>Simple FPS with Textures & Health</title>
 <style>
   body, html {
     margin: 0; padding: 0; overflow: hidden;
-    background: #222;
+    background: #111;
     color: white;
     font-family: monospace;
     user-select: none;
@@ -14,18 +14,54 @@
   canvas {
     display: block;
     margin: 0 auto;
-    background: #333;
+    background: #222;
   }
-  #score {
+  #ui {
     position: absolute;
     top: 10px; left: 10px;
     font-size: 18px;
+    z-index: 10;
+  }
+  #health-bar {
+    width: 200px;
+    height: 24px;
+    background: #444;
+    border: 2px solid white;
+    margin-top: 8px;
+    position: relative;
+  }
+  #health-fill {
+    height: 100%;
+    background: #e33;
+    width: 100%;
+  }
+  #gun {
+    position: absolute;
+    bottom: 10px;
+    right: 10px;
+    width: 150px;
+    user-select: none;
+    image-rendering: pixelated;
   }
 </style>
 </head>
 <body>
-<div id="score">Score: 0</div>
+<div id="ui">
+  Score: <span id="score">0</span><br/>
+  Health:
+  <div id="health-bar"><div id="health-fill"></div></div>
+</div>
 <canvas id="game" width="640" height="400"></canvas>
+
+<!-- Simple pixel gun sprite (SVG data URI) -->
+<img id="gun" src="data:image/svg+xml;utf8,
+<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 32' shape-rendering='crispEdges'>
+  <rect x='0' y='10' width='40' height='6' fill='saddlebrown'/>
+  <rect x='40' y='8' width='12' height='10' fill='peru'/>
+  <rect x='52' y='14' width='10' height='4' fill='black'/>
+  <rect x='62' y='12' width='2' height='8' fill='gray'/>
+</svg>" alt="Gun" />
+
 <script>
 (() => {
   const canvas = document.getElementById('game');
@@ -34,45 +70,95 @@
   const height = canvas.height;
   const mapSize = 10;
 
-  // Simple map layout: 1 = wall, 0 = empty space
+  // Map: 1-4 = different wall textures, 0 = empty
   const map = [
     1,1,1,1,1,1,1,1,1,1,
     1,0,0,0,0,0,0,0,0,1,
-    1,0,0,0,1,1,0,0,0,1,
-    1,0,0,0,1,1,0,0,0,1,
-    1,0,0,0,0,0,0,1,0,1,
-    1,0,1,1,1,0,0,1,0,1,
-    1,0,1,0,0,0,0,0,0,1,
-    1,0,1,0,1,1,1,0,0,1,
-    1,0,0,0,0,0,0,0,2,1,
+    1,0,0,0,2,2,0,0,0,1,
+    1,0,0,0,2,2,0,0,0,1,
+    1,0,0,0,0,0,0,3,0,1,
+    1,0,3,3,3,0,0,3,0,1,
+    1,0,3,0,0,0,0,0,0,1,
+    1,0,3,0,4,4,4,0,0,1,
+    1,0,0,0,0,0,0,0,0,1,
     1,1,1,1,1,1,1,1,1,1,
   ];
+
+  // Simple wall textures (patterns)
+  const textures = [];
+
+  // Create some patterns for walls
+  function createTextures() {
+    for(let i=1; i<=4; i++){
+      const texCanvas = document.createElement('canvas');
+      texCanvas.width = 64;
+      texCanvas.height = 64;
+      const texCtx = texCanvas.getContext('2d');
+
+      // Different colored stripes/patterns per texture
+      texCtx.fillStyle = ['#888','#449944','#994444','#444499'][i-1];
+      texCtx.fillRect(0,0,64,64);
+
+      // Add some stripes
+      texCtx.strokeStyle = '#222';
+      texCtx.lineWidth = 2;
+      for(let y=0; y<64; y+=8){
+        texCtx.beginPath();
+        texCtx.moveTo(0,y+(i*2));
+        texCtx.lineTo(64,y+(i*2));
+        texCtx.stroke();
+      }
+      textures[i] = texCanvas;
+    }
+  }
+
+  createTextures();
 
   // Player state
   const player = {
     x: 2.5,
     y: 2.5,
-    dir: 0, // angle in radians, 0 = east
-    fov: Math.PI / 3, // 60 degrees
-    speed: 0.05,
-    rotSpeed: 0.04
+    dir: 0,
+    fov: Math.PI / 3,
+    speed: 0.06,
+    rotSpeed: 0.04,
+    health: 100,
   };
 
-  // Targets to shoot (x,y in map coords)
-  let targets = [
-    {x: 8.5, y: 8.5, hit: false}
-  ];
+  // Targets with health & damage, respawn logic
+  const maxTargets = 5;
+  const targets = [];
+
+  function spawnTarget() {
+    let tries = 0;
+    while(tries < 100){
+      let tx = 1 + Math.random() * (mapSize - 2);
+      let ty = 1 + Math.random() * (mapSize - 2);
+      if (map[Math.floor(ty) * mapSize + Math.floor(tx)] === 0) {
+        // Make sure not too close to player
+        const dist = Math.hypot(tx - player.x, ty - player.y);
+        if(dist > 2){
+          targets.push({x: tx, y: ty, health: 3, damageCooldown: 0});
+          break;
+        }
+      }
+      tries++;
+    }
+  }
+
+  // Initially spawn targets
+  for(let i=0; i<maxTargets; i++) spawnTarget();
 
   let score = 0;
-  const scoreDiv = document.getElementById('score');
+  const scoreSpan = document.getElementById('score');
+  const healthFill = document.getElementById('health-fill');
 
   // Keyboard state
   const keys = {};
-
   document.addEventListener('keydown', e => keys[e.key.toLowerCase()] = true);
   document.addEventListener('keyup', e => keys[e.key.toLowerCase()] = false);
 
-  // Raycasting function
+  // Raycasting function returning hit info & texture info
   function castRay(angle) {
     let sin = Math.sin(angle);
     let cos = Math.cos(angle);
@@ -80,6 +166,8 @@
     let dist = 0;
     let hit = false;
     let wallX, wallY;
+    let wallTex = 1;
+    let side = 0; // 0 = vertical, 1 = horizontal for shading
 
     while (!hit && dist < 20) {
       dist += 0.01;
@@ -91,154 +179,236 @@
         dist = 20;
       } else {
         let cell = map[Math.floor(y) * mapSize + Math.floor(x)];
-        if (cell === 1) {
+        if (cell > 0) {
           hit = true;
           wallX = x;
           wallY = y;
+          wallTex = cell;
+          // Determine side for shading
+          const cx = Math.floor(x);
+          const cy = Math.floor(y);
+          if(Math.abs(cx - x) < Math.abs(cy - y)) side = 1;
+          else side = 0;
         }
       }
     }
-    return {dist, wallX, wallY};
+    return {dist, wallX, wallY, wallTex, side};
   }
 
-  // Draw walls with basic vertical lines
+  // Draw walls with texture mapping
   function renderScene() {
     ctx.clearRect(0, 0, width, height);
-
     for (let x = 0; x < width; x++) {
       let rayAngle = (player.dir - player.fov / 2) + (x / width) * player.fov;
       let ray = castRay(rayAngle);
-      // Correct fisheye effect:
       let correctedDist = ray.dist * Math.cos(rayAngle - player.dir);
       let wallHeight = Math.min(height, height / correctedDist);
 
-      let shade = 255 - Math.min(255, correctedDist * 20);
-      ctx.fillStyle = `rgb(${shade},${shade},${shade})`;
-      ctx.fillRect(x, height / 2 - wallHeight / 2, 1, wallHeight);
+      // Texture X coordinate
+      let texture = textures[ray.wallTex];
+      if(!texture) continue;
+
+      // Calculate texture coordinate (wall hit position fractional part)
+      let hitX;
+      if(ray.side === 0) {
+        hitX = ray.wallY - Math.floor(ray.wallY);
+      } else {
+        hitX = ray.wallX - Math.floor(ray.wallX);
+      }
+      if(hitX < 0) hitX += 1;
+      let texX = Math.floor(hitX * texture.width);
+
+      // Draw vertical textured slice
+      ctx.drawImage(
+        texture,
+        texX, 0, 1, texture.height,
+        x, height / 2 - wallHeight / 2, 1, wallHeight
+      );
+
+      // Simple shading for side walls
+      if(ray.side === 1){
+        ctx.fillStyle = 'rgba(0,0,0,0.25)';
+        ctx.fillRect(x, height / 2 - wallHeight / 2, 1, wallHeight);
+      }
     }
   }
 
-  // Draw targets as red circles on screen (simplified)
+  // Draw targets as red circles with health
   function renderTargets() {
     targets.forEach(t => {
-      if (t.hit) return;
-      // Calculate relative angle and distance
+      if(t.health <= 0) return;
+
       let dx = t.x - player.x;
       let dy = t.y - player.y;
       let dist = Math.sqrt(dx*dx + dy*dy);
       let angleToTarget = Math.atan2(dy, dx);
 
       let relativeAngle = angleToTarget - player.dir;
-
-      // Normalize relativeAngle to [-PI, PI]
       while (relativeAngle > Math.PI) relativeAngle -= 2 * Math.PI;
       while (relativeAngle < -Math.PI) relativeAngle += 2 * Math.PI;
 
       if (Math.abs(relativeAngle) < player.fov / 2) {
-        // Project x on screen
         let screenX = (relativeAngle + player.fov/2) / player.fov * width;
-        let size = 100 / dist;
-        if(size > 0 && size < 50){
+        let size = 120 / dist;
+        if(size > 0 && size < 60){
+          // Draw the target circle
           ctx.beginPath();
-          ctx.fillStyle = 'red';
+          ctx.fillStyle = `rgba(255,0,0,${Math.min(1, t.health/3)})`;
           ctx.arc(screenX, height/2, size, 0, 2 * Math.PI);
           ctx.fill();
+
+          // Health bar above target
+          ctx.fillStyle = 'white';
+          ctx.fillRect(screenX - size/2, height/2 - size - 10, size, 5);
+          ctx.fillStyle = 'red';
+          ctx.fillRect(screenX - size/2, height/2 - size - 10, size * (t.health/3), 5);
         }
       }
     });
   }
 
-  // Move player based on keys
+  // Player movement with collision
   function updatePlayer() {
+    let moveX = 0;
+    let moveY = 0;
+
     if (keys['a']) {
-      // Strafe left
-      let nx = player.x + Math.cos(player.dir - Math.PI/2) * player.speed;
-      let ny = player.y + Math.sin(player.dir - Math.PI/2) * player.speed;
-      if(map[Math.floor(ny)*mapSize + Math.floor(nx)] === 0) {
-        player.x = nx;
-        player.y = ny;
-      }
+      moveX += Math.cos(player.dir - Math.PI/2) * player.speed;
+      moveY += Math.sin(player.dir - Math.PI/2) * player.speed;
     }
     if (keys['d']) {
-      // Strafe right
-      let nx = player.x + Math.cos(player.dir + Math.PI/2) * player.speed;
-      let ny = player.y + Math.sin(player.dir + Math.PI/2) * player.speed;
-      if(map[Math.floor(ny)*mapSize + Math.floor(nx)] === 0) {
-        player.x = nx;
-        player.y = ny;
-      }
+      moveX += Math.cos(player.dir + Math.PI/2) * player.speed;
+      moveY += Math.sin(player.dir + Math.PI/2) * player.speed;
     }
     if (keys['w']) {
-      // Forward
-      let nx = player.x + Math.cos(player.dir) * player.speed;
-      let ny = player.y + Math.sin(player.dir) * player.speed;
-      if(map[Math.floor(ny)*mapSize + Math.floor(nx)] === 0) {
-        player.x = nx;
-        player.y = ny;
-      }
+      moveX += Math.cos(player.dir) * player.speed;
+      moveY += Math.sin(player.dir) * player.speed;
     }
     if (keys['s']) {
-      // Backward
-      let nx = player.x - Math.cos(player.dir) * player.speed;
-      let ny = player.y - Math.sin(player.dir) * player.speed;
-      if(map[Math.floor(ny)*mapSize + Math.floor(nx)] === 0) {
-        player.x = nx;
-        player.y = ny;
-      }
+      moveX -= Math.cos(player.dir) * player.speed;
+      moveY -= Math.sin(player.dir) * player.speed;
     }
-    if (keys['arrowleft']) {
-      player.dir -= player.rotSpeed;
-    }
-    if (keys['arrowright']) {
-      player.dir += player.rotSpeed;
-    }
+
+    // Check collision
+    let newX = player.x + moveX;
+    let newY = player.y + moveY;
+    if(map[Math.floor(player.y) * mapSize + Math.floor(newX)] === 0) player.x = newX;
+    if(map[Math.floor(newY) * mapSize + Math.floor(player.x)] === 0) player.y = newY;
+
+    if (keys['arrowleft']) player.dir -= player.rotSpeed;
+    if (keys['arrowright']) player.dir += player.rotSpeed;
   }
 
-  // Shooting mechanic: spacebar to shoot
+  // Targets damage player if close
+  function updateTargets() {
+    targets.forEach(t => {
+      if(t.health <= 0) return;
+
+      // Move slowly toward player if closer than 5 units
+      const dx = player.x - t.x;
+      const dy = player.y - t.y;
+      const dist = Math.hypot(dx, dy);
+
+      if(dist < 5){
+        const speed = 0.015;
+        t.x += (dx/dist) * speed;
+        t.y += (dy/dist) * speed;
+      }
+
+      // Damage player if touching (dist < 0.7), with cooldown
+      if(dist < 0.7){
+        if(t.damageCooldown <= 0){
+          player.health -= 10;
+          if(player.health < 0) player.health = 0;
+          t.damageCooldown = 30; // frames cooldown
+        }
+      }
+      if(t.damageCooldown > 0) t.damageCooldown--;
+    });
+  }
+
+  // Shoot mechanic
   function shoot() {
-    // Cast a ray forward and check if it hits target within range
+    // Cast ray forward to max 6 units
     let ray = castRay(player.dir);
 
+    // Check if any target is hit
+    let hitTarget = null;
+    let minDist = 100;
+
     targets.forEach(t => {
-      if (t.hit) return;
-      // Distance to target
+      if(t.health <= 0) return;
       let dx = t.x - player.x;
       let dy = t.y - player.y;
       let distToTarget = Math.sqrt(dx*dx + dy*dy);
-      // Angle to target
       let angleToTarget = Math.atan2(dy, dx);
-      let angleDiff = Math.abs(angleToTarget - player.dir);
+      let angleDiff = angleToTarget - player.dir;
       while (angleDiff > Math.PI) angleDiff -= 2 * Math.PI;
+      while (angleDiff < -Math.PI) angleDiff += 2 * Math.PI;
       angleDiff = Math.abs(angleDiff);
 
-      if (distToTarget < ray.dist + 0.3 && distToTarget < 6 && angleDiff < 0.1) {
-        t.hit = true;
-        score++;
-        scoreDiv.textContent = 'Score: ' + score;
+      if(distToTarget < 6 && distToTarget < ray.dist + 0.3 && angleDiff < 0.12){
+        if(distToTarget < minDist){
+          minDist = distToTarget;
+          hitTarget = t;
+        }
       }
     });
 
-    // Flash effect (simple)
-    ctx.fillStyle = 'rgba(255, 255, 255, 0.3)';
-    ctx.fillRect(0, 0, width, height);
+    if(hitTarget){
+      hitTarget.health -= 1;
+      if(hitTarget.health <= 0){
+        score++;
+        scoreSpan.textContent = score;
+        // Respawn after delay
+        setTimeout(() => {
+          const index = targets.indexOf(hitTarget);
+          if(index !== -1) {
+            targets.splice(index,1);
+            spawnTarget();
+          }
+        }, 2000);
+      }
+    }
+
+    // Flash effect
+    ctx.fillStyle = 'rgba(255,255,255,0.3)';
+    ctx.fillRect(0,0,width,height);
   }
 
-  // Shoot on spacebar press (debounced)
+  // Shoot on spacebar with debounce
   let canShoot = true;
-  window.addEventListener('keydown', (e) => {
-    if (e.code === 'Space' && canShoot) {
+  window.addEventListener('keydown', e => {
+    if(e.code === 'Space' && canShoot && player.health > 0){
       shoot();
       canShoot = false;
-      setTimeout(() => canShoot = true, 300);
+      setTimeout(() => canShoot = true, 250);
       e.preventDefault();
     }
   });
 
+  // Health bar update
+  function updateHealthBar() {
+    healthFill.style.width = player.health + '%';
+  }
+
   function gameLoop() {
+    if(player.health <= 0){
+      ctx.fillStyle = 'rgba(0,0,0,0.7)';
+      ctx.fillRect(0,0,width,height);
+      ctx.fillStyle = 'red';
+      ctx.font = '40px monospace';
+      ctx.textAlign = 'center';
+      ctx.fillText('YOU DIED', width/2, height/2);
+      ctx.font = '20px monospace';
+      ctx.fillText('Score: ' + score, width/2, height/2 + 40);
+      return;
+    }
     updatePlayer();
+    updateTargets();
     renderScene();
     renderTargets();
-
+    updateHealthBar();
     requestAnimationFrame(gameLoop);
   }
 
