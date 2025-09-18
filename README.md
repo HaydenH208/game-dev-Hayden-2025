@@ -89,8 +89,8 @@ video-flac test
 
 <details><summary>Thursday Sept 18th, 2025</summary>
 
-### Title
-1.
+vibe code
+1.learn how to code
 1.
 1.
 
