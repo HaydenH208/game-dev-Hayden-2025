@@ -80,8 +80,8 @@ video-flac test
 
 <details><summary>Wed Sept 17th, 2025</summary>
 
-### Title
-1.
+vibe coding
+1.make a website using ai to clean
 1.
 1.
 
