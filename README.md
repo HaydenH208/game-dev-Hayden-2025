@@ -6,7 +6,7 @@ Note: If you have a link to an assignment that has not been marked, put "open" a
 
 ---
 
-<details open><summary>September 2025 Journal Entries</summary>
+<details ><summary>September 2025 Journal Entries</summary>
 
 ---
 
@@ -102,10 +102,10 @@ vibe code
 
 ---   
 
-<details ><summary>Monday Sept 22nd, 2025</summary>
+<details open ><summary>Monday Sept 22nd, 2025</summary>
 
 ### Title
-1.
+1.hopefully last weppage class
 1.
 1.
 
