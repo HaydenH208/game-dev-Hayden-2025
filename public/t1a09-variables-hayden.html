@@ -1,1 +1,17 @@
+<h2 align=center>t1a09-variables-hayden.html</h2>
+<h2>concatenating sgtrings</h2>
+<input id="myNum01" type=text value="Hayden" >
++
+<input id="myNum02" type=text value="Lucerne" ><br>
+<span id="mySpan01">...</span><br>
 
+<input type=buttpn value="add (concatenate) strings" onclick="{
+  let myHayden = document.getElementById('myNum01').value
+  let myLucerne = document.getElementById('myNum02').value
+  const myOut = document.getElementById('mySpan01')
+  myOut.innerHTML = myHayden + ' ' + myLucerne
+  }"><br>
+
+  <br><br>
+  <h2> Adding floating point numbers</h2>
+  <input id="myNum03" type=text value="3.4">
