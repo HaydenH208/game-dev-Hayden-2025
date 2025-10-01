@@ -10,8 +10,34 @@
   let myLucerne = document.getElementById('myNum02').value
   const myOut = document.getElementById('mySpan01')
   myOut.innerHTML = myHayden + ' ' + myLucerne
-  }"><br>
+}"><br>
 
-  <br><br>
-  <h2> Adding floating point numbers</h2>
-  <input id="myNum03" type=text value="3.4">
+<br><br
+<h2> Adding floating point numbers</h2>
+<input id="myNum03" type=text value="3.4" >
++
+<input id="myNum04" type=text value="2.1" ><br>
+<span id="mySpan02">...</span><br>
+<inpt type=button value="add floating point number" onclick="{
+  let myHayden = document.getElementById('myNum03').value
+  var myLucerne = document.getElementById('myNum04').value
+  let myAnswer = parseFloat(myHayden) + parseFloat(myLucerne)
+  const myOut = document.getElementById('mySpan02')
+  myOut.innerHTML = myHayden + ' + '+ myLucerne +' = ' + myAnswer
+}"><br>
+<h2> test for boolean</h2>
+
+<input id="myBool" type=text value="3.4" >
+<span id="mySpan03">...</span><br>
+<input type=button value="is boolean?" onclick="{
+  let myBool = document.getElementById('myBool').value
+  const myOut = document.getElementById('mySpan03')
+
+  if (myBool.toLowerCase() === 'ture' || myBool.toLowerCase() === 'false') {
+    myAnswer ='yes'
+  } else {
+    myAnswer = 'No'
+  }
+
+  myOut.innerHTML = 'Is' +myBool +' a Boolean ? ' + myAnswer
+}"><br>
