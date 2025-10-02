@@ -1,16 +1,22 @@
 <!DOCTYPE html>
 <h1>looping stuff :D</h1>
+<body>
 
-<div id="output"></div>
-<body></body>
+<button onclick="runLoop()">Run Loop</button>
+
+<div id="output" style="margin-top: 20px;"></div>
+
 <script>
+  function runLoop() {
     const outputDiv = document.getElementById("output");
+    outputDiv.innerHTML = ""; // Clear previous output
 
-  for (let i = 0; i <= 10; i++) {
-    if (i === 3) {
-      outputDiv.innerHTML += "third<br>";
-    } else {
-      outputDiv.innerHTML += i + "<br>";
+    for (let i = 0; i <= 10; i++) {
+      if (i === 3) {
+        outputDiv.innerHTML += "third<br>";
+      } else {
+        outputDiv.innerHTML += i + "<br>";
+      }
     }
   }
 </script>
