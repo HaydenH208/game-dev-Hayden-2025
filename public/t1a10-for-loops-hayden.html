@@ -1,24 +1,24 @@
 <!DOCTYPE html>
 <h1>looping stuff :D</h1>
 <body>
+<script>
 
 <input id="mynum01" type=number balue="4" > <br>
 
-<div id="output" style="margin-top: 20px;"></div>
-
-<script>
-  function runLoop() {
-    const outputDiv = document.getElementById("output");
-    outputDiv.innerHTML = ""; // Clear previous output
-
-    for (let i = 0; i <= 10; i++) {
-      if (i === 3) {
-        outputDiv.innerHTML += "third<br>";
-      } else {
-        outputDiv.innerHTML += i + "<br>";
-      }
+<input type=buttpnvalue="myEvent squares" onclick="{
+  let myTemp = ''
+  document.getElementById('myDiv01').innerHTML = ''
+  for (x=0; x<10; x++){
+    if (x ==3){
+      myTemp += x + ' third <br>'
+    } else {
+      myTemp += x +'<br>'
     }
   }
+  document.getElemenById('myDiv01').innerHTML = myTemp
+  }"><br>
+
+  <div id="myDiv01">...</div>
 </script>
 </body>
 </html>
