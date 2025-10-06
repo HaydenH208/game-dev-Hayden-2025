@@ -1,1 +1,178 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Katana Zero-Like Game</title>
+  <style>
+    body {
+      margin: 0;
+      overflow: hidden;
+      background: #111;
+    }
+    canvas {
+      background: #222;
+      display: block;
+      margin: 0 auto;
+    }
+  </style>
+</head>
+<body>
+<canvas id="gameCanvas" width="800" height="450"></canvas>
+<script>
+  const canvas = document.getElementById("gameCanvas");
+  const ctx = canvas.getContext("2d");
+
+  let keys = {};
+
+  document.addEventListener("keydown", e => keys[e.key] = true);
+  document.addEventListener("keyup", e => keys[e.key] = false);
+
+  const GRAVITY = 0.5;
+  const FRICTION = 0.8;
+  let slowMo = false;
+
+  class Player {
+    constructor() {
+      this.x = 100;
+      this.y = 300;
+      this.w = 30;
+      this.h = 50;
+      this.vx = 0;
+      this.vy = 0;
+      this.onGround = false;
+      this.facing = 1;
+      this.attacking = false;
+      this.dead = false;
+    }
+
+    update() {
+      if (this.dead) return;
+
+      // Movement
+      if (keys["a"] || keys["ArrowLeft"]) this.vx = -4;
+      else if (keys["d"] || keys["ArrowRight"]) this.vx = 4;
+      else this.vx *= FRICTION;
+
+      if ((keys["w"] || keys["ArrowUp"]) && this.onGround) {
+        this.vy = -10;
+        this.onGround = false;
+      }
+
+      if (keys["Shift"]) slowMo = true;
+      else slowMo = false;
+
+      if (keys[" "]) {
+        this.attack();
+      }
+
+      this.vy += GRAVITY;
+
+      this.x += this.vx;
+      this.y += this.vy;
+
+      // Collision
+      if (this.y + this.h > canvas.height) {
+        this.y = canvas.height - this.h;
+        this.vy = 0;
+        this.onGround = true;
+      }
+
+      // Facing
+      if (this.vx > 0) this.facing = 1;
+      else if (this.vx < 0) this.facing = -1;
+    }
+
+    attack() {
+      this.attacking = true;
+      setTimeout(() => this.attacking = false, 100);
+    }
+
+    draw() {
+      ctx.fillStyle = this.attacking ? "red" : "white";
+      ctx.fillRect(this.x, this.y, this.w, this.h);
+
+      // Katana slash
+      if (this.attacking) {
+        ctx.fillStyle = "red";
+        ctx.fillRect(this.x + this.facing * 30, this.y + 10, 20, 5);
+      }
+    }
+
+    die() {
+      this.dead = true;
+    }
+
+    reset() {
+      this.x = 100;
+      this.y = 300;
+      this.vx = this.vy = 0;
+      this.dead = false;
+    }
+  }
+
+  class Enemy {
+    constructor(x, y) {
+      this.x = x;
+      this.y = y;
+      this.w = 30;
+      this.h = 50;
+      this.alive = true;
+    }
+
+    update(player) {
+      if (!this.alive) return;
+      if (player.attacking &&
+          player.x + player.facing * 30 < this.x + this.w &&
+          player.x + player.facing * 30 + 20 > this.x &&
+          player.y + 10 < this.y + this.h &&
+          player.y + 10 + 5 > this.y) {
+        this.alive = false;
+      }
+
+      // Touch = player dies
+      if (this.alive &&
+          player.x < this.x + this.w &&
+          player.x + player.w > this.x &&
+          player.y < this.y + this.h &&
+          player.y + player.h > this.y) {
+        player.die();
+      }
+    }
+
+    draw() {
+      if (!this.alive) return;
+      ctx.fillStyle = "lime";
+      ctx.fillRect(this.x, this.y, this.w, this.h);
+    }
+  }
+
+  const player = new Player();
+  const enemies = [new Enemy(500, 300), new Enemy(650, 300)];
+
+  function loop() {
+    if (keys["r"]) {
+      player.reset();
+      enemies.forEach(e => e.alive = true);
+    }
+
+    let delta = slowMo ? 0.5 : 1;
+
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+    for (let i = 0; i < delta; i++) {
+      player.update();
+      enemies.forEach(e => e.update(player));
+    }
+
+    player.draw();
+    enemies.forEach(e => e.draw());
+
+    requestAnimationFrame(loop);
+  }
+
+  loop();
+</script>
+</body>
+</html>
 
