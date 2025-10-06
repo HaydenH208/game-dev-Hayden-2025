@@ -274,6 +274,25 @@
   }
 
   loop();
+  const playerImage = new Image();
+playerImage.src = "assets/player.png";
+
+class Player {
+  // ... (other code)
+
+  draw() {
+    if (!playerImage.complete) return;
+
+    ctx.save();
+    ctx.translate(this.x + this.w / 2, this.y);
+    if (this.facing === -1) {
+      ctx.scale(-1, 1); // flip horizontally
+    }
+
+    ctx.drawImage(playerImage, -this.w / 2, 0, this.w, this.h);
+    ctx.restore();
+  }
+}
 </script>
 </body>
 </html>
