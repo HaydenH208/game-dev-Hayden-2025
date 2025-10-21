@@ -1,1 +1,20 @@
+<body onkeypress="myKeyPress(event)">
+  
+<scripts>
+  function myKeyPress(event) {
+    alery('You pressed: ${event.key}');
+</scripts>
 
+  <h1 align=center>t1a16-move-div-hayden.html</h1>
+
+  <div style="position:relative; left:0; right:" id="myDiv01">...</div>
+
+  <button onclick="{
+    const myDiv = document.getElementById('myDiv01')
+    myDiv.style.left = '100px'
+  }">Move to 100px</button><br>
+
+  <button onClick="{
+    const myDiv = document.getElementById('myDiv01')
+    myDiv.style.left = parseInt(myDiv.style.left) + 20 +'px'
+  }">Move Right</button>
