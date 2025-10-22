@@ -1,20 +1,37 @@
 <body onkeypress="myKeyPress(event)">
-  
-<scripts>
+
+<script>
+  let myTimer01
+  function myAuto(){
+    const myI = document.getElementById('myImage01')
+    myIm.style.left = parseInt(myIm.style.left) + 5 +'px'
+    if (parseInt(myIm.style.left) > 600){
+      myIm.style.left = '10px'
+    }
+  }
+
   function myKeyPress(event) {
-    alery('You pressed: ${event.key}');
-</scripts>
+    alert('You pressed: ${event.key}');
+  }
+</script>
 
-  <h1 align=center>t1a16-move-div-hayden.html</h1>
+<h1 align=center>t1a16-move-div-hayden.html</h1>
 
-  <div style="position:relative; left:0; right:" id="myDiv01">...</div>
+<div style="position:relative; left:0; right:0; id="myDiv01">...</div>
 
-  <button onclick="{
-    const myDiv = document.getElementById('myDiv01')
-    myDiv.style.left = '100px'
-  }">Move to 100px</button><br>
+<button onclick="{
+  const myDiv = document.getElementById('myDiv01')
+  myDiv.style.left = '100px'
+}">Move to 100px</button><br>
 
-  <button onClick="{
-    const myDiv = document.getElementById('myDiv01')
-    myDiv.style.left = parseInt(myDiv.style.left) + 20 +'px'
-  }">Move Right</button>
+
+  <button id="myButton01" oonclick="{
+    const myDiv = document.getElementById9'myDiv01')
+    myDic.style.left = parseInt(myDiv.style.left) + 20 +'px'
+  }">Move Right</button><br>
+
+<b onclick="{
+  myTimer01 = setInterval(myAuto, 50)
+}"Move auto</b><br>
+
+<img src="..." id="myImage01" width=40 style="position:relative; left:0; right:0;">
