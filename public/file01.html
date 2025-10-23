@@ -2,331 +2,276 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8">
-<title>Improved Simple FPS</title>
+<title>Simple FPS with Enemy Sprites</title>
 <style>
-  html, body {
-    margin: 0; padding: 0; overflow: hidden;
-    background: #111;
-    color: white;
-    font-family: monospace;
-    user-select: none;
-  }
-  canvas {
-    display: block;
-    margin: 0 auto;
-    background: #222;
-    image-rendering: pixelated;
-  }
-  #ui {
-    position: absolute;
-    top: 10px; left: 10px;
-    font-size: 18px;
-    z-index: 10;
-  }
-  #health-bar {
-    width: 200px;
-    height: 24px;
-    background: #444;
-    border: 2px solid white;
-    margin-top: 8px;
-    position: relative;
-  }
-  #health-fill {
-    height: 100%;
-    background: #e33;
-    width: 100%;
-    transition: width 0.2s;
-  }
-  #gun {
-    position: absolute;
-    bottom: 10px;
-    right: 10px;
-    width: 150px;
-    user-select: none;
-    image-rendering: pixelated;
-    transform-origin: bottom right;
-    transition: transform 0.1s;
-  }
+  html, body { margin:0; padding:0; background:#111; overflow:hidden; color:white; font-family:monospace; }
+  canvas { display:block; margin:auto; background:#222; image-rendering:pixelated; }
+  #ui { position:absolute; top:10px; left:10px; z-index:10; }
+  #health-bar { width:200px; height:20px; background:#444; border:2px solid #fff; margin-top:6px; }
+  #health-fill { height:100%; background:#e33; width:100%; transition:width 0.2s; }
+  #gun { position:absolute; bottom:10px; right:10px; width:150px; image-rendering:pixelated; transform-origin:bottom right; transition:transform 0.1s; }
 </style>
 </head>
 <body>
 <div id="ui">
-  Score: <span id="score">0</span><br/>
-  Health:
+  Score: <span id="score">0</span><br>
   <div id="health-bar"><div id="health-fill"></div></div>
 </div>
 <canvas id="game" width="640" height="400"></canvas>
 
-<!-- Simple pixel gun sprite -->
 <img id="gun" src="data:image/svg+xml;utf8,
-<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 32' shape-rendering='crispEdges'>
+<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 32'>
   <rect x='0' y='10' width='40' height='6' fill='saddlebrown'/>
   <rect x='40' y='8' width='12' height='10' fill='peru'/>
   <rect x='52' y='14' width='10' height='4' fill='black'/>
   <rect x='62' y='12' width='2' height='8' fill='gray'/>
-</svg>" alt="Gun" />
+</svg>">
 
 <script>
 (() => {
-  const canvas = document.getElementById('game');
-  const ctx = canvas.getContext('2d');
-  ctx.imageSmoothingEnabled = false;
-  const width = canvas.width;
-  const height = canvas.height;
+const c = document.getElementById('game');
+const ctx = c.getContext('2d');
+ctx.imageSmoothingEnabled = false;
+const W = c.width, H = c.height;
 
-  const mapSize = 10;
-  const map = [
-    [1,1,1,1,1,1,1,1,1,1],
-    [1,0,0,0,0,0,0,0,0,1],
-    [1,0,0,0,2,2,0,0,0,1],
-    [1,0,0,0,2,2,0,0,0,1],
-    [1,0,0,0,0,0,0,3,0,1],
-    [1,0,3,3,3,0,0,3,0,1],
-    [1,0,3,0,0,0,0,0,0,1],
-    [1,0,3,0,4,4,4,0,0,1],
-    [1,0,0,0,0,0,0,0,0,1],
-    [1,1,1,1,1,1,1,1,1,1]
-  ];
+// --- MAP ---
+const mapSize = 10;
+const map = [
+ [1,1,1,1,1,1,1,1,1,1],
+ [1,0,0,0,0,0,0,0,0,1],
+ [1,0,0,0,2,2,0,0,0,1],
+ [1,0,0,0,2,2,0,0,0,1],
+ [1,0,0,0,0,0,0,3,0,1],
+ [1,0,3,3,3,0,0,3,0,1],
+ [1,0,3,0,0,0,0,0,0,1],
+ [1,0,3,0,4,4,4,0,0,1],
+ [1,0,0,0,0,0,0,0,0,1],
+ [1,1,1,1,1,1,1,1,1,1]
+];
 
-  const textures = [];
-  function createTextures() {
-    for (let i = 1; i <= 4; i++) {
-      const tex = document.createElement('canvas');
-      tex.width = tex.height = 64;
-      const tctx = tex.getContext('2d');
-      tctx.fillStyle = ['#888', '#449944', '#994444', '#444499'][i-1];
-      tctx.fillRect(0,0,64,64);
-      tctx.strokeStyle = '#222';
-      tctx.lineWidth = 2;
-      for (let y=0; y<64; y+=8) {
-        tctx.beginPath();
-        tctx.moveTo(0,y+(i*2));
-        tctx.lineTo(64,y+(i*2));
-        tctx.stroke();
-      }
-      textures[i] = tex;
+// --- WALL TEXTURES ---
+const tex = [];
+function createWallTextures(){
+  for(let i=1;i<=4;i++){
+    const t=document.createElement('canvas');
+    t.width=t.height=64;
+    const g=t.getContext('2d');
+    g.fillStyle=['#888','#494','#944','#44a'][i-1];
+    g.fillRect(0,0,64,64);
+    g.strokeStyle='#222'; g.lineWidth=2;
+    for(let y=0;y<64;y+=8){
+      g.beginPath(); g.moveTo(0,y+(i*2)%8);
+      g.lineTo(64,y+(i*2)%8); g.stroke();
+    }
+    tex[i]=t;
+  }
+}
+createWallTextures();
+
+// --- ENEMY SPRITES ---
+const enemySprites = [];
+function createEnemySprites(){
+  for(let f=0; f<3; f++){
+    const s=document.createElement('canvas');
+    s.width=s.height=32;
+    const g=s.getContext('2d');
+    g.fillStyle='#000'; g.fillRect(0,0,32,32);
+    g.fillStyle='#0f0';
+    g.beginPath();
+    g.arc(16,16,10,0,2*Math.PI); g.fill();
+    g.fillStyle='#fff'; // eyes
+    g.fillRect(10,10,4,4);
+    g.fillRect(18,10,4,4);
+    g.fillStyle='#f00';
+    g.fillRect(12,20+Math.sin(f/3*Math.PI)*2,8,2);
+    enemySprites.push(s);
+  }
+}
+createEnemySprites();
+
+// --- PLAYER ---
+const player={x:2.5,y:2.5,dir:0,fov:Math.PI/3,speed:0.06,rotSpeed:0.04,health:100};
+const keys={};
+addEventListener('keydown',e=>keys[e.key.toLowerCase()]=true);
+addEventListener('keyup',e=>keys[e.key.toLowerCase()]=false);
+
+// --- TARGETS ---
+const targets=[];
+function spawnTarget(){
+  for(let tries=0; tries<100; tries++){
+    const x=1+Math.random()*(mapSize-2);
+    const y=1+Math.random()*(mapSize-2);
+    if(map[Math.floor(y)][Math.floor(x)]===0){
+      const d=Math.hypot(x-player.x,y-player.y);
+      if(d>2){targets.push({x,y,health:3,frame:0,timer:0,damageCooldown:0}); break;}
     }
   }
-  createTextures();
+}
+for(let i=0;i<5;i++) spawnTarget();
 
-  const player = { x:2.5, y:2.5, dir:0, fov:Math.PI/3, speed:0.06, rotSpeed:0.04, health:100 };
-  const keys = {};
-  const gun = document.getElementById('gun');
-  const scoreSpan = document.getElementById('score');
-  const healthFill = document.getElementById('health-fill');
-  let displayedHealth = 100;
-  let score = 0;
+// --- UI ---
+const gun=document.getElementById('gun');
+const scoreEl=document.getElementById('score');
+const healthFill=document.getElementById('health-fill');
+let displayHealth=100, score=0;
 
-  document.addEventListener('keydown', e => keys[e.key.toLowerCase()] = true);
-  document.addEventListener('keyup', e => keys[e.key.toLowerCase()] = false);
+// --- RAYCAST ---
+function castRay(a){
+  let sin=Math.sin(a), cos=Math.cos(a);
+  let dist=0,hit=false,wall=1,side=0;
+  while(!hit&&dist<20){
+    dist+=0.01;
+    const x=player.x+cos*dist, y=player.y+sin*dist;
+    if(x<0||x>=mapSize||y<0||y>=mapSize){hit=true;dist=20;}
+    else{
+      const cell=map[Math.floor(y)][Math.floor(x)];
+      if(cell>0){hit=true;wall=cell; side=(Math.abs(Math.floor(x)-x)<Math.abs(Math.floor(y)-y))?1:0;}
+    }
+  }
+  return {dist,wall,side};
+}
 
-  const targets = [];
-  const maxTargets = 5;
+// --- RENDER WALLS + DEPTH ---
+let depth=[];
+function renderScene(){
+  const grad1=ctx.createLinearGradient(0,0,0,H/2);
+  grad1.addColorStop(0,'#446'); grad1.addColorStop(1,'#224');
+  ctx.fillStyle=grad1; ctx.fillRect(0,0,W,H/2);
+  const grad2=ctx.createLinearGradient(0,H/2,0,H);
+  grad2.addColorStop(0,'#232'); grad2.addColorStop(1,'#010');
+  ctx.fillStyle=grad2; ctx.fillRect(0,H/2,W,H/2);
 
-  function spawnTarget() {
-    let tries = 0;
-    while (tries++ < 100) {
-      const tx = 1 + Math.random() * (mapSize-2);
-      const ty = 1 + Math.random() * (mapSize-2);
-      if (map[Math.floor(ty)][Math.floor(tx)] === 0) {
-        const dist = Math.hypot(tx-player.x, ty-player.y);
-        if (dist > 2) {
-          targets.push({x:tx, y:ty, health:3, damageCooldown:0});
-          break;
+  depth=[];
+  for(let x=0;x<W;x++){
+    const ra=player.dir-player.fov/2+(x/W)*player.fov;
+    const r=castRay(ra);
+    const d=r.dist*Math.cos(ra-player.dir);
+    depth[x]=d;
+    const wallH=Math.min(H,H/d);
+    const texImg=tex[r.wall];
+    const hitX=((r.side===0)?
+      (player.y+Math.sin(ra)*r.dist):
+      (player.x+Math.cos(ra)*r.dist))%1;
+    const tx=Math.floor(Math.abs(hitX)*texImg.width);
+    ctx.globalAlpha=Math.max(0.2,1-r.dist/10);
+    ctx.drawImage(texImg,tx,0,1,texImg.height,
+      x,H/2-wallH/2,1,wallH);
+    if(r.side===1){ctx.fillStyle='rgba(0,0,0,0.25)';ctx.fillRect(x,H/2-wallH/2,1,wallH);}
+    ctx.globalAlpha=1;
+  }
+}
+
+// --- RENDER TARGETS ---
+function renderTargets(){
+  const vis=[];
+  targets.forEach(t=>{
+    if(t.health<=0)return;
+    const dx=t.x-player.x, dy=t.y-player.y;
+    const dist=Math.hypot(dx,dy);
+    const ang=Math.atan2(dy,dx);
+    let rel=ang-player.dir;
+    while(rel>Math.PI)rel-=2*Math.PI;
+    while(rel<-Math.PI)rel+=2*Math.PI;
+    if(Math.abs(rel)<player.fov/2){vis.push({...t,dist,rel});}
+  });
+  vis.sort((a,b)=>b.dist-a.dist);
+  vis.forEach(t=>{
+    const scrX=(t.rel+player.fov/2)/player.fov*W;
+    const size=150/t.dist;
+    const sprite=enemySprites[Math.floor(t.frame)%enemySprites.length];
+    for(let sx=Math.floor(scrX-size/2); sx<scrX+size/2; sx++){
+      if(sx>=0&&sx<W){
+        if(t.dist<depth[sx]){
+          ctx.globalAlpha=Math.min(1,t.health/3);
+          ctx.drawImage(sprite, sx-size/2, H/2-size/2, size, size);
+          ctx.globalAlpha=1;
+          return; // one draw per enemy
         }
       }
     }
-  }
-  for (let i=0; i<maxTargets; i++) spawnTarget();
+  });
+}
 
-  // Raycasting
-  function castRay(angle) {
-    let sin = Math.sin(angle), cos = Math.cos(angle);
-    let dist = 0, hit = false, wallTex = 1, side = 0;
-    while (!hit && dist < 20) {
-      dist += 0.01;
-      const x = player.x + cos*dist;
-      const y = player.y + sin*dist;
-      if (x<0||x>=mapSize||y<0||y>=mapSize) { hit=true; dist=20; }
-      else {
-        const cell = map[Math.floor(y)][Math.floor(x)];
-        if (cell>0) {
-          hit = true; wallTex = cell;
-          const cx = Math.floor(x), cy = Math.floor(y);
-          side = Math.abs(cx-x) < Math.abs(cy-y) ? 1 : 0;
-        }
-      }
+// --- UPDATE TARGETS ---
+function updateTargets(dt){
+  targets.forEach(t=>{
+    if(t.health<=0)return;
+    const dx=player.x-t.x, dy=player.y-t.y;
+    const d=Math.hypot(dx,dy);
+    if(d<5){
+      const sp=0.015*dt;
+      const nx=t.x+(dx/d)*sp, ny=t.y+(dy/d)*sp;
+      if(map[Math.floor(ny)][Math.floor(nx)]===0){t.x=nx;t.y=ny;}
     }
-    return {dist, wallTex, side};
-  }
+    if(d<0.7&&t.damageCooldown<=0){player.health=Math.max(0,player.health-10);t.damageCooldown=30;}
+    if(t.damageCooldown>0)t.damageCooldown--;
+    t.timer+=dt*0.1; if(t.timer>1){t.frame=(t.frame+1)%3; t.timer=0;}
+  });
+}
 
-  function renderScene() {
-    // Sky & floor
-    const gradSky = ctx.createLinearGradient(0,0,0,height/2);
-    gradSky.addColorStop(0,'#446');
-    gradSky.addColorStop(1,'#224');
-    ctx.fillStyle = gradSky;
-    ctx.fillRect(0,0,width,height/2);
-    const gradFloor = ctx.createLinearGradient(0,height/2,0,height);
-    gradFloor.addColorStop(0,'#232');
-    gradFloor.addColorStop(1,'#010');
-    ctx.fillStyle = gradFloor;
-    ctx.fillRect(0,height/2,width,height/2);
+// --- PLAYER MOVEMENT ---
+function movePlayer(dt){
+  let mx=0,my=0;
+  if(keys['w']){mx+=Math.cos(player.dir)*player.speed;my+=Math.sin(player.dir)*player.speed;}
+  if(keys['s']){mx-=Math.cos(player.dir)*player.speed;my-=Math.sin(player.dir)*player.speed;}
+  if(keys['a']){mx+=Math.cos(player.dir-Math.PI/2)*player.speed;my+=Math.sin(player.dir-Math.PI/2)*player.speed;}
+  if(keys['d']){mx+=Math.cos(player.dir+Math.PI/2)*player.speed;my+=Math.sin(player.dir+Math.PI/2)*player.speed;}
+  const nx=player.x+mx*dt, ny=player.y+my*dt;
+  if(map[Math.floor(player.y)][Math.floor(nx)]===0)player.x=nx;
+  if(map[Math.floor(ny)][Math.floor(player.x)]===0)player.y=ny;
+  if(keys['arrowleft'])player.dir-=player.rotSpeed*dt;
+  if(keys['arrowright'])player.dir+=player.rotSpeed*dt;
+}
 
-    // Walls
-    for (let x=0;x<width;x++){
-      const rayAngle = player.dir - player.fov/2 + (x/width)*player.fov;
-      const ray = castRay(rayAngle);
-      const correctedDist = ray.dist * Math.cos(rayAngle-player.dir);
-      const wallHeight = Math.min(height, height / correctedDist);
-      const texture = textures[ray.wallTex];
-      if (!texture) continue;
-      const hitX = ((ray.side===0)?
-          (player.y + Math.sin(rayAngle)*ray.dist):
-          (player.x + Math.cos(rayAngle)*ray.dist)) % 1;
-      const texX = Math.floor(Math.abs(hitX) * texture.width);
-      ctx.globalAlpha = Math.max(0.2, 1 - ray.dist/10); // fog
-      ctx.drawImage(texture, texX, 0, 1, texture.height,
-                    x, height/2 - wallHeight/2, 1, wallHeight);
-      if (ray.side===1) {
-        ctx.fillStyle = 'rgba(0,0,0,0.25)';
-        ctx.fillRect(x, height/2-wallHeight/2, 1, wallHeight);
-      }
-      ctx.globalAlpha = 1;
-    }
-  }
+// --- SHOOTING ---
+let canShoot=true;
+function shoot(){
+  if(!canShoot||player.health<=0)return;
+  canShoot=false; setTimeout(()=>canShoot=true,250);
+  gun.style.transform='translateY(10px)';
+  setTimeout(()=>gun.style.transform='translateY(0)',100);
+  let hit=null,md=99;
+  targets.forEach(t=>{
+    if(t.health<=0)return;
+    const dx=t.x-player.x, dy=t.y-player.y;
+    const d=Math.hypot(dx,dy);
+    const a=Math.atan2(dy,dx);
+    let diff=Math.abs(a-player.dir); while(diff>Math.PI)diff-=2*Math.PI;
+    if(d<6&&diff<0.12&&d<md){hit=t;md=d;}
+  });
+  if(hit){hit.health--; hit.frame=0; if(hit.health<=0){score++;scoreEl.textContent=score; setTimeout(()=>{targets.splice(targets.indexOf(hit),1);spawnTarget();},2000);}}
+  ctx.fillStyle='rgba(255,255,180,0.3)'; ctx.fillRect(0,0,W,H);
+}
+addEventListener('keydown',e=>{if(e.code==='Space'){shoot();e.preventDefault();}});
 
-  function renderTargets() {
-    targets.forEach(t=>{
-      if (t.health<=0) return;
-      const dx=t.x-player.x, dy=t.y-player.y;
-      const dist=Math.hypot(dx,dy);
-      const angle=Math.atan2(dy,dx);
-      let rel=angle-player.dir;
-      while(rel>Math.PI) rel-=2*Math.PI;
-      while(rel<-Math.PI) rel+=2*Math.PI;
-      if (Math.abs(rel)<player.fov/2){
-        const screenX=(rel+player.fov/2)/player.fov*width;
-        const size=120/dist;
-        if(size>0 && size<60){
-          ctx.beginPath();
-          ctx.fillStyle=`rgba(255,0,0,${Math.min(1,t.health/3)})`;
-          ctx.arc(screenX, height/2, size, 0, 2*Math.PI);
-          ctx.fill();
-          ctx.fillStyle='white';
-          ctx.fillRect(screenX-size/2, height/2-size-10, size,5);
-          ctx.fillStyle='red';
-          ctx.fillRect(screenX-size/2, height/2-size-10, size*(t.health/3),5);
-        }
-      }
-    });
-  }
+// --- UI UPDATE ---
+function updateHealth(){
+  displayHealth+=(player.health-displayHealth)*0.1;
+  healthFill.style.width=displayHealth+'%';
+}
 
-  function drawMiniMap() {
-    const scale = 6;
-    for (let y=0;y<mapSize;y++){
-      for (let x=0;x<mapSize;x++){
-        ctx.fillStyle = map[y][x] ? '#555' : '#000';
-        ctx.fillRect(x*scale, y*scale, scale, scale);
-      }
-    }
-    ctx.fillStyle='yellow';
-    ctx.fillRect(player.x*scale-2, player.y*scale-2, 4, 4);
+// --- LOOP ---
+let last=0;
+function loop(t){
+  const dt=(t-last)/16.67; last=t;
+  if(player.health<=0){
+    ctx.fillStyle='rgba(0,0,0,0.7)';
+    ctx.fillRect(0,0,W,H);
+    ctx.fillStyle='red'; ctx.font='40px monospace'; ctx.textAlign='center';
+    ctx.fillText('YOU DIED',W/2,H/2);
+    ctx.font='20px monospace';
+    ctx.fillText('Press R to Restart',W/2,H/2+40);
+    if(keys['r'])location.reload();
+    return;
   }
-
-  function updatePlayer(dt) {
-    let moveX=0, moveY=0;
-    if (keys['a']) { moveX+=Math.cos(player.dir-Math.PI/2)*player.speed; moveY+=Math.sin(player.dir-Math.PI/2)*player.speed; }
-    if (keys['d']) { moveX+=Math.cos(player.dir+Math.PI/2)*player.speed; moveY+=Math.sin(player.dir+Math.PI/2)*player.speed; }
-    if (keys['w']) { moveX+=Math.cos(player.dir)*player.speed; moveY+=Math.sin(player.dir)*player.speed; }
-    if (keys['s']) { moveX-=Math.cos(player.dir)*player.speed; moveY-=Math.sin(player.dir)*player.speed; }
-    const newX=player.x+moveX*dt, newY=player.y+moveY*dt;
-    if(map[Math.floor(player.y)][Math.floor(newX)]===0) player.x=newX;
-    if(map[Math.floor(newY)][Math.floor(player.x)]===0) player.y=newY;
-    if(keys['arrowleft']) player.dir-=player.rotSpeed*dt;
-    if(keys['arrowright']) player.dir+=player.rotSpeed*dt;
-  }
-
-  function updateTargets(dt) {
-    targets.forEach(t=>{
-      if(t.health<=0)return;
-      const dx=player.x-t.x, dy=player.y-t.y;
-      const dist=Math.hypot(dx,dy);
-      if(dist<5){
-        const speed=0.015*dt;
-        const newX=t.x+(dx/dist)*speed, newY=t.y+(dy/dist)*speed;
-        if(map[Math.floor(newY)][Math.floor(newX)]===0){ t.x=newX; t.y=newY; }
-      }
-      if(dist<0.7 && t.damageCooldown<=0){
-        player.health=Math.max(0,player.health-10);
-        t.damageCooldown=30;
-      }
-      if(t.damageCooldown>0)t.damageCooldown--;
-    });
-  }
-
-  let canShoot=true;
-  function shoot(){
-    if(!canShoot||player.health<=0)return;
-    canShoot=false;
-    setTimeout(()=>canShoot=true,250);
-    gun.style.transform='translateY(10px)';
-    setTimeout(()=>gun.style.transform='translateY(0)',100);
-    let hitTarget=null,minDist=100;
-    targets.forEach(t=>{
-      if(t.health<=0)return;
-      const dx=t.x-player.x, dy=t.y-player.y;
-      const dist=Math.hypot(dx,dy);
-      const angle=Math.atan2(dy,dx);
-      let diff=Math.abs(angle-player.dir);
-      while(diff>Math.PI) diff-=2*Math.PI;
-      if(dist<6 && diff<0.12 && dist<minDist){ hitTarget=t; minDist=dist; }
-    });
-    if(hitTarget){
-      hitTarget.health--;
-      if(hitTarget.health<=0){
-        score++; scoreSpan.textContent=score;
-        setTimeout(()=>{
-          const i=targets.indexOf(hitTarget);
-          if(i!==-1){ targets.splice(i,1); spawnTarget(); }
-        },2000);
-      }
-    }
-    ctx.fillStyle='rgba(255,255,200,0.3)';
-    ctx.fillRect(0,0,width,height);
-  }
-  window.addEventListener('keydown', e=>{ if(e.code==='Space'){shoot(); e.preventDefault();} });
-
-  function updateHealthBar(){
-    displayedHealth += (player.health - displayedHealth) * 0.1;
-    healthFill.style.width = displayedHealth + '%';
-  }
-
-  let lastTime=0;
-  function gameLoop(time){
-    const dt=(time-lastTime)/16.67; lastTime=time;
-    if(player.health<=0){
-      ctx.fillStyle='rgba(0,0,0,0.7)';
-      ctx.fillRect(0,0,width,height);
-      ctx.fillStyle='red';
-      ctx.font='40px monospace';
-      ctx.textAlign='center';
-      ctx.fillText('YOU DIED', width/2, height/2);
-      ctx.font='20px monospace';
-      ctx.fillText('Score: '+score, width/2, height/2+40);
-      ctx.fillText('Press R to Restart', width/2, height/2+70);
-      if(keys['r']) location.reload();
-      return;
-    }
-    updatePlayer(dt);
-    updateTargets(dt);
-    renderScene();
-    renderTargets();
-    drawMiniMap();
-    updateHealthBar();
-    requestAnimationFrame(gameLoop);
-  }
-  requestAnimationFrame(gameLoop);
+  movePlayer(dt);
+  updateTargets(dt);
+  renderScene();
+  renderTargets();
+  updateHealth();
+  requestAnimationFrame(loop);
+}
+requestAnimationFrame(loop);
 })();
 </script>
 </body>
