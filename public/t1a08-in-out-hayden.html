@@ -1,19 +1,26 @@
-<h2 align=center>T1a08-in-out-hayden</h2>
-<a href="https://www.w3schools.com/jsref/prop_html_innerhtml.asp"> good reference to input output Javascript innerHTML value by Hayden</a>
-<h4>Example in out code</h4>
-<pre>
-  let myIn01=document.getElementById('myNum01').value
-  document.getElementById('myDiv01').innerHTML = myIn01 + ' squared = ' + myIn01*myIn01
-</pre>
+<h2 align="center">T1a08-in-out-hayden</h2>
+<a href="https://www.w3schools.com/jsref/prop_html_innerhtml.asp">
+  Good reference to input/output JavaScript innerHTML value by Hayden
+</a>
 
-<h4> Example working code</h4>
+<h4>Example working code</h4>
 
-<input id="myNum01" type=number value="4" ><br>
-<input type=button value="myEvent squares" onclik="{
-  let myIn01= parseFloat(document.getElementById('myNum01').value)
-  let myAnswer = myIn01
-  document.getElementById('myDiv01").innerHTML = myIn01 + ' squared = ' myAnswer
-}"><br>
-<input type=text id="username" placeholder="pleae enter username"
-  <button onclick="showname()"submit></button>
+<input id="myNum01" type="number" value="4"><br>
+<input type="button" value="myEvent squares" onclick="{
+  let myIn01 = parseFloat(document.getElementById('myNum01').value);
+  let myAnswer = myIn01 * myIn01;
+  document.getElementById('myDiv01').innerHTML = myIn01 + ' squared = ' + myAnswer;
+}"><br><br>
+
+<input type="text" id="username" placeholder="please enter username">
+<button onclick="showname()">Submit</button>
+
 <div id="myDiv01">...</div>
+
+<script>
+function showname() {
+  let name = document.getElementById('username').value;
+  document.getElementById('myDiv01').innerHTML = "Hello, " + name + "!";
+}
+</script>
+
