@@ -1,16 +1,21 @@
-<h1 align=center>t1a12-events-hayden.html</h1>
+<h1 style="text-align:center;">t1a12-events-hayden.html</h1>
 
 <button onclick="console.log('hi')">ctrl-shift-i for console</button><br><br>
-<input type=button value="mouseOver" onMouseOver="{this.style.backgroundColor='green'}"> <br>
-<div tabindex="0" onkeydown="console.log('key pressed')" style="border:1 px solid #000; padding:10 px;">
+
+<input type="button" value="mouseOver" onmouseover="this.style.backgroundColor='green'"><br><br>
+
+<div tabindex="0" onkeydown="console.log('key pressed')" style="border:1px solid #000; padding:10px;">
   Click here and press something
-</div> <br>
-<input type="text" onfocus="style.backgroundColor='lightyellow'" placeholder="Focus here">
+</div><br>
+
+<input type="text" onfocus="this.style.backgroundColor='lightyellow'" placeholder="Focus here"><br><br>
+
 <select onchange="console.log('option changed')">
   <option value="1">Apple</option>
   <option value="2">AMD</option>
   <option value="3">nvidia</option>
-</select> <br>
-<p ondblclick="{console.log('double clicked')}">Double-click this text.</p> <br>
-<img src="ignore/pukeko.jpg" onmouseover="console.log('mouse over image')"; alt="Hover me" width="150"> <br>
+</select><br><br>
 
+<p ondblclick="console.log('double clicked')">Double-click this text.</p><br>
+
+<img src="ignore/pukeko.jpg" onmouseover="console.log('mouse over image')" alt="Hover me" width="150"><br>
