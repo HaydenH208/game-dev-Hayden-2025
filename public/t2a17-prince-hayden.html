@@ -6,7 +6,6 @@
 </head>
 <body>
 
-<!-- ASCII Crown -->
 <pre id="output"></pre>
 
 <button id="drawAsciiBtn">Draw ASCII Crown</button>
@@ -21,7 +20,6 @@
 
 <br><br>
 
-<!-- Canvas Crown -->
 <canvas id="crownCanvas" width="400" height="250"></canvas>
 
 <script>
@@ -48,13 +46,14 @@
   let asciiDrawing = false;
   let animatingSquare = false;
 
-  // Define crown path points
+  // Crown path points (now includes bottom base)
   const points = [
     [50, 180], [100, 100],
     [150, 180], [200, 100],
     [250, 180], [300, 100],
-    [350, 180]
+    [350, 180], [350, 200], [50, 200], [50, 180] // bottom rectangle
   ];
+
   const pathPoints = [];
   for (let i = 0; i < points.length - 1; i++) {
     pathPoints.push([points[i], points[i + 1]]);
@@ -102,6 +101,7 @@
       const dx = x2 - x1;
       const dy = y2 - y1;
 
+      // Step size adjusts with slider
       const step = 1 / (400 / parseInt(speedSlider.value));
 
       const currentX = x1 + dx * progress;
