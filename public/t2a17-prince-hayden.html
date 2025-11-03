@@ -2,7 +2,7 @@
 <html>
 <head>
   <meta charset="UTF-8">
-  <title>t2a17-prince-hayden</title>
+  <title>ASCII + Canvas Crown Drawer</title>
 </head>
 <body>
 
@@ -17,12 +17,18 @@
 <input type="range" id="speedSlider" min="10" max="300" value="50">
 <span id="speedValue">50</span> ms per character
 
+<br><br>
+
+<canvas id="crownCanvas" width="400" height="250"></canvas>
+
 <script>
   const output = document.getElementById("output");
   const drawBtn = document.getElementById("drawBtn");
   const resetBtn = document.getElementById("resetBtn");
   const speedSlider = document.getElementById("speedSlider");
   const speedValue = document.getElementById("speedValue");
+  const canvas = document.getElementById("crownCanvas");
+  const ctx = canvas.getContext("2d");
 
   // ASCII crown pattern
   const crownLines = [
@@ -34,43 +40,127 @@
     "       \\________/           "
   ];
 
-  let interval = null;
+  let asciiIndex = 0;
   let drawing = false;
-  let index = 0;
+
+  let pathPoints = [];
+  let animatingSquare = false;
+
+  // Define crown outline points for the square
+  const points = [
+    [50, 180], [100, 100],
+    [150, 180], [200, 100],
+    [250, 180], [300, 100],
+    [350, 180]
+  ];
+
+  for (let i = 0; i < points.length - 1; i++) {
+    pathPoints.push([points[i], points[i + 1]]);
+  }
 
   function drawCrown() {
-    if (drawing) return; // avoid multiple runs
+    if (drawing) return;
     drawing = true;
     output.textContent = "";
-    index = 0;
+    asciiIndex = 0;
 
+    resetCanvas();
     const text = crownLines.join("\n");
 
-    interval = setInterval(() => {
-      if (index < text.length) {
-        output.textContent += text[index];
-        index++;
-      } else {
-        clearInterval(interval);
-        drawing = false;
-      }
-    }, parseInt(speedSlider.value));
+    // Start both animations
+    drawASCIIStep();
+    animateSquareWithTrail();
   }
 
-  function resetCrown() {
-    clearInterval(interval);
+  function drawASCIIStep() {
+    const text = crownLines.join("\n");
+
+    if (asciiIndex < text.length) {
+      output.textContent += text[asciiIndex];
+      asciiIndex++;
+      setTimeout(drawASCIIStep, parseInt(speedSlider.value));
+    } else {
+      drawing = false;
+    }
+  }
+
+  function resetAll() {
     output.textContent = "";
+    asciiIndex = 0;
     drawing = false;
-    index = 0;
+    resetCanvas();
   }
 
-  // update display for speed
+  function resetCanvas() {
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+    ctx.lineWidth = 3;
+    ctx.strokeStyle = "gold";
+    ctx.lineCap = "round";
+    animatingSquare = false;
+  }
+
+  // Animate square with golden trail
+  function animateSquareWithTrail() {
+    animatingSquare = true;
+    resetCanvas();
+    let lineIndex = 0;
+    let progress = 0;
+    let prevX = points[0][0];
+    let prevY = points[0][1];
+
+    function drawLine() {
+      if (!animatingSquare) return;
+      if (lineIndex >= pathPoints.length) {
+        animatingSquare = false;
+        return;
+      }
+
+      const [[x1, y1], [x2, y2]] = pathPoints[lineIndex];
+      const dx = x2 - x1;
+      const dy = y2 - y1;
+
+      const step = 1 / (400 / parseInt(speedSlider.value)); // smoother motion based on speed
+
+      const currentX = x1 + dx * progress;
+      const currentY = y1 + dy * progress;
+
+      // Draw gold trail line
+      ctx.beginPath();
+      ctx.moveTo(prevX, prevY);
+      ctx.lineTo(currentX, currentY);
+      ctx.stroke();
+
+      // Draw moving red square
+      ctx.fillStyle = "red";
+      ctx.fillRect(currentX - 4, currentY - 4, 8, 8);
+
+      prevX = currentX;
+      prevY = currentY;
+
+      progress += step;
+
+      if (progress >= 1) {
+        progress = 0;
+        lineIndex++;
+        if (lineIndex < pathPoints.length) {
+          prevX = pathPoints[lineIndex][0][0];
+          prevY = pathPoints[lineIndex][0][1];
+        }
+      }
+
+      requestAnimationFrame(drawLine);
+    }
+
+    requestAnimationFrame(drawLine);
+  }
+
+  // Live speed update
   speedSlider.addEventListener("input", () => {
     speedValue.textContent = speedSlider.value;
   });
 
   drawBtn.addEventListener("click", drawCrown);
-  resetBtn.addEventListener("click", resetCrown);
+  resetBtn.addEventListener("click", resetAll);
 </script>
 
 </body>
