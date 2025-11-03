@@ -7,13 +7,24 @@
 <body>
 
 <pre id="output"></pre>
+
 <button id="drawBtn">Draw Crown</button>
+<button id="resetBtn">Reset</button>
+
+<br><br>
+
+<label for="speedSlider">Speed:</label>
+<input type="range" id="speedSlider" min="10" max="300" value="50">
+<span id="speedValue">50</span> ms per character
 
 <script>
   const output = document.getElementById("output");
-  const button = document.getElementById("drawBtn");
+  const drawBtn = document.getElementById("drawBtn");
+  const resetBtn = document.getElementById("resetBtn");
+  const speedSlider = document.getElementById("speedSlider");
+  const speedValue = document.getElementById("speedValue");
 
-  // ASCII crown made from standard keyboard characters
+  // ASCII crown pattern
   const crownLines = [
     "        ^     ^     ^        ",
     "       /\\    /\\    /\\       ",
@@ -23,28 +34,43 @@
     "       \\________/           "
   ];
 
+  let interval = null;
   let drawing = false;
+  let index = 0;
 
   function drawCrown() {
-    if (drawing) return; // prevent overlapping runs
+    if (drawing) return; // avoid multiple runs
     drawing = true;
-    output.textContent = ""; // clear previous drawing
+    output.textContent = "";
+    index = 0;
 
-    const crownText = crownLines.join("\n"); // combine all lines into one string
-    let index = 0;
+    const text = crownLines.join("\n");
 
-    const interval = setInterval(() => {
-      if (index < crownText.length) {
-        output.textContent += crownText[index];
+    interval = setInterval(() => {
+      if (index < text.length) {
+        output.textContent += text[index];
         index++;
       } else {
         clearInterval(interval);
         drawing = false;
       }
-    }, 50); // delay between characters (ms)
+    }, parseInt(speedSlider.value));
   }
 
-  button.addEventListener("click", drawCrown);
+  function resetCrown() {
+    clearInterval(interval);
+    output.textContent = "";
+    drawing = false;
+    index = 0;
+  }
+
+  // update display for speed
+  speedSlider.addEventListener("input", () => {
+    speedValue.textContent = speedSlider.value;
+  });
+
+  drawBtn.addEventListener("click", drawCrown);
+  resetBtn.addEventListener("click", resetCrown);
 </script>
 
 </body>
