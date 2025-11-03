@@ -1,0 +1,51 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="UTF-8">
+  <title>ASCII Crown Drawer</title>
+</head>
+<body>
+
+<pre id="output"></pre>
+<button id="drawBtn">Draw Crown</button>
+
+<script>
+  const output = document.getElementById("output");
+  const button = document.getElementById("drawBtn");
+
+  // ASCII crown made from standard keyboard characters
+  const crownLines = [
+    "        ^     ^     ^        ",
+    "       /\\    /\\    /\\       ",
+    "      /__\\  /__\\  /__\\      ",
+    "     *----*----*----*       ",
+    "      \\          /          ",
+    "       \\________/           "
+  ];
+
+  let drawing = false;
+
+  function drawCrown() {
+    if (drawing) return; // prevent overlapping runs
+    drawing = true;
+    output.textContent = ""; // clear previous drawing
+
+    const crownText = crownLines.join("\n"); // combine all lines into one string
+    let index = 0;
+
+    const interval = setInterval(() => {
+      if (index < crownText.length) {
+        output.textContent += crownText[index];
+        index++;
+      } else {
+        clearInterval(interval);
+        drawing = false;
+      }
+    }, 50); // delay between characters (ms)
+  }
+
+  button.addEventListener("click", drawCrown);
+</script>
+
+</body>
+</html>
