@@ -1,12 +1,11 @@
-<!DOCTYPE html>
 // ===== 1. for loop =====
-// Classic counted loop
+console.log("=== for loop ===");
 for (let i = 0; i < 5; i++) {
   console.log("for:", i);
 }
 
 // ===== 2. while loop =====
-// Runs while condition is true
+console.log("\n=== while loop ===");
 let j = 0;
 while (j < 5) {
   console.log("while:", j);
@@ -14,7 +13,7 @@ while (j < 5) {
 }
 
 // ===== 3. do...while loop =====
-// Executes at least once before checking condition
+console.log("\n=== do...while loop ===");
 let k = 0;
 do {
   console.log("do...while:", k);
@@ -22,39 +21,43 @@ do {
 } while (k < 5);
 
 // ===== 4. for...of loop =====
-// Loops through iterable objects (arrays, strings, etc.)
+console.log("\n=== for...of loop ===");
 const fruits = ["apple", "banana", "cherry"];
 for (const fruit of fruits) {
   console.log("for...of:", fruit);
 }
 
 // ===== 5. for...in loop =====
-// Loops through enumerable object properties
+console.log("\n=== for...in loop ===");
 const person = { name: "Alice", age: 25, city: "NY" };
 for (const key in person) {
   console.log("for...in:", key, "=", person[key]);
 }
 
 // ===== 6. Array.forEach() =====
-// Executes a function for each array element
+console.log("\n=== forEach loop ===");
 const nums = [10, 20, 30];
 nums.forEach((num, index) => {
   console.log("forEach:", index, num);
 });
 
 // ===== 7. map(), filter(), reduce() =====
-// Not technically loops, but often used similarly
-const doubled = nums.map(n => n * 2);       // [20, 40, 60]
-const evens = nums.filter(n => n % 20 === 0); // [20]
+console.log("\n=== map, filter, reduce ===");
+const doubled = nums.map(n => n * 2);          // [20, 40, 60]
+const evens = nums.filter(n => n % 20 === 0);  // [20]
 const sum = nums.reduce((acc, n) => acc + n, 0); // 60
-console.log("map/filter/reduce:", doubled, evens, sum);
+console.log("map result:", doubled);
+console.log("filter result:", evens);
+console.log("reduce result:", sum);
 
 // ===== 8. for await...of =====
-// Used with async iterables (requires async context)
+console.log("\n=== for await...of loop (async) ===");
 async function asyncLoop() {
-  const asyncNums = [Promise.resolve(1), Promise.resolve(2)];
+  const asyncNums = [Promise.resolve(1), Promise.resolve(2), Promise.resolve(3)];
   for await (const n of asyncNums) {
     console.log("for await...of:", n);
   }
 }
-asyncLoop();
+asyncLoop().then(() => {
+  console.log("\nAll loops complete ✅");
+});
