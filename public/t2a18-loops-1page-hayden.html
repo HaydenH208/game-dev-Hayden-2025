@@ -1,123 +1,33 @@
 <!DOCTYPE html>
-<html lang="en">
-<head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>JavaScript Loops — Interactive Demo (No CSS)</title>
-</head>
-<body>
-  <h1>JavaScript Loops — Interactive Demo</h1>
-  <p>Click a button to run each loop:</p>
+<html lang="en"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1.0">
+<title>JavaScript Loops Demo</title></head><body>
+<h1>JavaScript Loops — One Page Demo</h1>
+<p>Click a button to run each loop:</p>
 
-  <div>
-    <button onclick="runForLoop()">for loop</button>
-    <button onclick="runWhileLoop()">while loop</button>
-    <button onclick="runDoWhileLoop()">do...while loop</button>
-    <button onclick="runForOfLoop()">for...of loop</button>
-    <button onclick="runForInLoop()">for...in loop</button>
-    <button onclick="runForEachLoop()">forEach()</button>
-    <button onclick="runMapFilterReduce()">map/filter/reduce</button>
-    <button onclick="runForAwaitOfLoop()">for await...of</button>
-    <button onclick="clearOutput()">Clear Output</button>
-  </div>
+<button onclick="runForLoop()">for</button>
+<button onclick="runWhileLoop()">while</button>
+<button onclick="runDoWhileLoop()">do...while</button>
+<button onclick="runForOfLoop()">for...of</button>
+<button onclick="runForInLoop()">for...in</button>
+<button onclick="runForEachLoop()">forEach</button>
+<button onclick="runMapFilterReduce()">map/filter/reduce</button>
+<button onclick="runForAwaitOfLoop()">for await...of</button>
+<button onclick="clearOutput()">Clear</button>
 
-  <pre id="output"></pre>
+<pre id="output"></pre>
 
-  <script>
-    const out = document.getElementById("output");
-    function log(text) {
-      console.log(text);
-      out.textContent += text + "\n";
-    }
-    function clearOutput() {
-      out.textContent = "";
-      console.clear();
-    }
+<script>
+const out=document.getElementById("output");
+function log(t){console.log(t);out.textContent+=t+"\n";}
+function clearOutput(){out.textContent="";console.clear();}
 
-    // 1. for loop
-    function runForLoop() {
-      clearOutput();
-      log("=== for loop ===");
-      for (let i = 0; i < 5; i++) {
-        log("for: " + i);
-      }
-    }
-
-    // 2. while loop
-    function runWhileLoop() {
-      clearOutput();
-      log("=== while loop ===");
-      let j = 0;
-      while (j < 5) {
-        log("while: " + j);
-        j++;
-      }
-    }
-
-    // 3. do...while loop
-    function runDoWhileLoop() {
-      clearOutput();
-      log("=== do...while loop ===");
-      let k = 0;
-      do {
-        log("do...while: " + k);
-        k++;
-      } while (k < 5);
-    }
-
-    // 4. for...of loop
-    function runForOfLoop() {
-      clearOutput();
-      log("=== for...of loop ===");
-      const fruits = ["apple", "banana", "cherry"];
-      for (const fruit of fruits) {
-        log("for...of: " + fruit);
-      }
-    }
-
-    // 5. for...in loop
-    function runForInLoop() {
-      clearOutput();
-      log("=== for...in loop ===");
-      const person = { name: "Alice", age: 25, city: "NY" };
-      for (const key in person) {
-        log("for...in: " + key + " = " + person[key]);
-      }
-    }
-
-    // 6. forEach loop
-    function runForEachLoop() {
-      clearOutput();
-      log("=== forEach() ===");
-      const nums = [10, 20, 30];
-      nums.forEach((num, index) => {
-        log(`forEach: index ${index}, value ${num}`);
-      });
-    }
-
-    // 7. map(), filter(), reduce()
-    function runMapFilterReduce() {
-      clearOutput();
-      log("=== map(), filter(), reduce() ===");
-      const nums = [10, 20, 30];
-      const doubled = nums.map(n => n * 2);
-      const evens = nums.filter(n => n % 20 === 0);
-      const sum = nums.reduce((acc, n) => acc + n, 0);
-      log("map result: " + JSON.stringify(doubled));
-      log("filter result: " + JSON.stringify(evens));
-      log("reduce result: " + sum);
-    }
-
-    // 8. for await...of loop
-    async function runForAwaitOfLoop() {
-      clearOutput();
-      log("=== for await...of (async) ===");
-      const asyncNums = [Promise.resolve(1), Promise.resolve(2), Promise.resolve(3)];
-      for await (const n of asyncNums) {
-        log("for await...of: " + n);
-      }
-      log("✅ Done!");
-    }
-  </script>
-</body>
-</html>
+function runForLoop(){clearOutput();log("=== for loop ===");for(let i=0;i<5;i++)log("for: "+i);}
+function runWhileLoop(){clearOutput();log("=== while loop ===");let j=0;while(j<5){log("while: "+j);j++;}}
+function runDoWhileLoop(){clearOutput();log("=== do...while loop ===");let k=0;do{log("do...while: "+k);k++;}while(k<5);}
+function runForOfLoop(){clearOutput();log("=== for...of loop ===");for(const f of ["apple","banana","cherry"])log("for...of: "+f);}
+function runForInLoop(){clearOutput();log("=== for...in loop ===");const p={name:"Alice",age:25,city:"NY"};for(const k in p)log("for...in: "+k+" = "+p[k]);}
+function runForEachLoop(){clearOutput();log("=== forEach() ===");[10,20,30].forEach((n,i)=>log(`forEach: index ${i}, value ${n}`));}
+function runMapFilterReduce(){clearOutput();log("=== map/filter/reduce ===");const nums=[10,20,30],d=nums.map(n=>n*2),e=nums.filter(n=>n%20===0),s=nums.reduce((a,n)=>a+n,0);log("map: "+JSON.stringify(d));log("filter: "+JSON.stringify(e));log("reduce: "+s);}
+async function runForAwaitOfLoop(){clearOutput();log("=== for await...of (async) ===");const arr=[Promise.resolve(1),Promise.resolve(2),Promise.resolve(3)];for await(const n of arr)log("for await...of: "+n);log("✅ Done!");}
+</script>
+</body></html>
