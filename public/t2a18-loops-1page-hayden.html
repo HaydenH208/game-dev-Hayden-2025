@@ -28,6 +28,6 @@ function runForOfLoop(){clearOutput();log("=== for...of loop ===");for(const f o
 function runForInLoop(){clearOutput();log("=== for...in loop ===");const p={name:"Alice",age:25,city:"NY"};for(const k in p)log("for...in: "+k+" = "+p[k]);}
 function runForEachLoop(){clearOutput();log("=== forEach() ===");[10,20,30].forEach((n,i)=>log(`forEach: index ${i}, value ${n}`));}
 function runMapFilterReduce(){clearOutput();log("=== map/filter/reduce ===");const nums=[10,20,30],d=nums.map(n=>n*2),e=nums.filter(n=>n%20===0),s=nums.reduce((a,n)=>a+n,0);log("map: "+JSON.stringify(d));log("filter: "+JSON.stringify(e));log("reduce: "+s);}
-async function runForAwaitOfLoop(){clearOutput();log("=== for await...of (async) ===");const arr=[Promise.resolve(1),Promise.resolve(2),Promise.resolve(3)];for await(const n of arr)log("for await...of: "+n);log("✅ Done!");}
+async function runForAwaitOfLoop(){clearOutput();log("=== for await...of (async) ===");const arr=[Promise.resolve(1),Promise.resolve(2),Promise.resolve(3)];for await(const n of arr)log("for await...of: "+n);log("done");}
 </script>
 </body></html>
