@@ -1,21 +1,28 @@
 <!DOCTYPE html>
-<h1 align=center>looping stuff :D</h1>
-<script>
-<input id="mynum01" type=number balue="4" > <br>
+<html>
+<head>
+  <title>Looping Stuff :D</title>
+</head>
+<body>
 
-<input type=buttonvalue="myEvent squares" onclick="{
-  let myTemp = ''
-  document.getElementById('myDiv01').innerHTML = ''
-  for (x=0; x<10; x++){
-    if (x ==3){
-      myTemp += x + ' third <br>'
-    } else {
-      myTemp += x +'<br>'
+  <h1 align="center">Looping stuff :D</h1>
+
+  <input id="mynum01" type="number" value="4"> <br><br>
+
+  <input type="button" value="myEvent squares" onclick="{
+    let myTemp = '';
+    document.getElementById('myDiv01').innerHTML = '';
+    for (let x = 0; x < 10; x++) {
+      if (x == 3) {
+        myTemp += x + ' third <br>';
+      } else {
+        myTemp += x + '<br>';
+      }
     }
-  }
-  document.getElemenById('myDiv01').innerHTML = myTemp
-  }"><br>
+    document.getElementById('myDiv01').innerHTML = myTemp;
+  }"><br><br>
 
   <div id="myDiv01">...</div>
-</script>
+
+</body>
 </html>
