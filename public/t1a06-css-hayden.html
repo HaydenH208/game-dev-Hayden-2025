@@ -1,25 +1,106 @@
 <!DOCTYPE html>
-<html>
-<style> body { background-color: purple;}
-border: 5px solid red;
-padding: 20px;
-width: 200px;
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>T1A06 CSS – Hayden</title>
 
+  <style>
+    /* Page background and global text styling */
+    body {
+      background: linear-gradient(135deg, purple, indigo);
+      color: white;
+      font-family: Arial, Helvetica, sans-serif;
+      margin: 0;
+      padding: 40px;
+      text-align: center;
+    }
 
-</style>
+    /* Add a styled container */
+    .container {
+      background-color: rgba(255, 255, 255, 0.1);
+      border: 5px solid red;
+      border-radius: 15px;
+      padding: 30px;
+      width: 60%;
+      margin: 0 auto;
+      box-shadow: 0 0 20px rgba(0,0,0,0.5);
+    }
 
-<h1 align=center>t1a06-css-hayden.html
+    h1 {
+      color: gold;
+      text-shadow: 2px 2px 4px black;
+    }
 
-<a href="https://www.w3schools.com/Css/css-border.asp">w3schools css</a><br><br>
-<b>bold</b> true?<br>
-<b style="color=:red; background-color:yellow;">cool</b> Yes!<br>
-<br>
+    a {
+      color: cyan;
+      font-weight: bold;
+      text-decoration: none;
+      transition: 0.3s;
+    }
 
-  <i style="border-style:groove;">italic with a border</i>
+    a:hover {
+      color: yellow;
+      text-decoration: underline;
+    }
 
+    .highlight {
+      color: red;
+      background-color: yellow;
+      padding: 4px 8px;
+      border-radius: 5px;
+      font-weight: bold;
+    }
 
+    .bordered-italic {
+      font-style: italic;
+      border: 3px groove lightblue;
+      padding: 5px 10px;
+      background-color: rgba(255,255,255,0.2);
+      display: inline-block;
+    }
 
+    .fancy-box {
+      border: 3px dashed pink;
+      background: rgba(255,255,255,0.15);
+      padding: 20px;
+      margin-top: 20px;
+      transition: transform 0.3s, background 0.3s;
+    }
 
+    .fancy-box:hover {
+      transform: scale(1.05);
+      background: rgba(255,255,255,0.3);
+    }
+
+    footer {
+      margin-top: 30px;
+      font-size: 0.9em;
+      color: lightgray;
+    }
+  </style>
+</head>
+
+<body>
+  <div class="container">
+    <h1>T1A06 CSS – Hayden</h1>
+
+    <a href="https://www.w3schools.com/Css/css-border.asp" target="_blank">Visit W3Schools CSS Guide</a><br><br>
+
+    <b>Bold text?</b> True!<br><br>
+    <span class="highlight">Cool</span> — Yes!<br><br>
+
+    <span class="bordered-italic">Italic with a border</span>
+
+    <div class="fancy-box">
+      <p>This is a fancy box with a dashed border, padding, and a hover animation!</p>
+    </div>
+  </div>
+
+  <footer>
+    Created by Hayden • Updated 2025
+  </footer>
+</body>
 </html>
 
 
