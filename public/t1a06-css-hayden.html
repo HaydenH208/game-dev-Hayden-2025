@@ -6,9 +6,17 @@
   <title>T1A06 CSS – Hayden</title>
 
   <style>
-    /* Page background and global text styling */
+    /* 1️⃣ Animated gradient background */
+    @keyframes bgAnimation {
+      0% { background-position: 0% 50%; }
+      50% { background-position: 100% 50%; }
+      100% { background-position: 0% 50%; }
+    }
+
     body {
-      background: linear-gradient(135deg, purple, indigo);
+      background: linear-gradient(135deg, purple, indigo, blue);
+      background-size: 300% 300%;
+      animation: bgAnimation 10s ease infinite;
       color: white;
       font-family: Arial, Helvetica, sans-serif;
       margin: 0;
@@ -27,9 +35,15 @@
       box-shadow: 0 0 20px rgba(0,0,0,0.5);
     }
 
+    /* 2️⃣ Glowing text animation for title */
+    @keyframes textGlow {
+      0%, 100% { text-shadow: 0 0 10px gold, 0 0 20px orange; }
+      50% { text-shadow: 0 0 20px yellow, 0 0 40px gold; }
+    }
+
     h1 {
       color: gold;
-      text-shadow: 2px 2px 4px black;
+      animation: textGlow 2s infinite alternate;
     }
 
     a {
@@ -73,6 +87,50 @@
       background: rgba(255,255,255,0.3);
     }
 
+    /* 3️⃣ Custom button style */
+    .cool-button {
+      background: linear-gradient(90deg, #ff4081, #ff80ab);
+      border: none;
+      padding: 12px 25px;
+      margin: 20px;
+      color: white;
+      font-size: 16px;
+      font-weight: bold;
+      border-radius: 30px;
+      cursor: pointer;
+      transition: transform 0.2s, box-shadow 0.3s;
+    }
+
+    .cool-button:hover {
+      transform: scale(1.1);
+      box-shadow: 0 0 15px #ff80ab;
+    }
+
+    /* 4️⃣ Rotating image on hover */
+    .rotating-img {
+      width: 150px;
+      height: 150px;
+      margin-top: 20px;
+      border-radius: 50%;
+      transition: transform 1s ease;
+      border: 3px solid white;
+    }
+
+    .rotating-img:hover {
+      transform: rotate(360deg) scale(1.1);
+    }
+
+    /* 5️⃣ Responsive design */
+    @media (max-width: 700px) {
+      .container {
+        width: 90%;
+        padding: 20px;
+      }
+      h1 {
+        font-size: 1.5em;
+      }
+    }
+
     footer {
       margin-top: 30px;
       font-size: 0.9em;
@@ -95,6 +153,10 @@
     <div class="fancy-box">
       <p>This is a fancy box with a dashed border, padding, and a hover animation!</p>
     </div>
+
+    <!-- Added button and image -->
+    <button class="cool-button">Click Me!</button><br>
+    <img src="https://upload.wikimedia.org/wikipedia/commons/3/3f/JPEG_example_flower.jpg" alt="Flower" class="rotating-img">
   </div>
 
   <footer>
@@ -102,5 +164,3 @@
   </footer>
 </body>
 </html>
-
-
