@@ -1,38 +1,150 @@
-<script>
-  class myAnimal {
-    constructor(passName, passAge) { 
-      this.myName = passName;
-      this.myAge = passAge;
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>T1A13 – Extended Classes by Hayden</title>
+<style>
+  body {
+    background: linear-gradient(135deg, #8e2de2, #4a00e0);
+    color: white;
+    font-family: Arial, Helvetica, sans-serif;
+    text-align: center;
+    padding: 30px;
+  }
+  h2 {
+    color: gold;
+    text-shadow: 2px 2px 4px black;
+  }
+  input[type="button"] {
+    background-color: #ff4081;
+    border: none;
+    padding: 10px 20px;
+    margin: 10px;
+    color: white;
+    font-weight: bold;
+    border-radius: 8px;
+    cursor: pointer;
+    transition: background 0.3s;
+  }
+  input[type="button"]:hover {
+    background-color: #f50057;
+  }
+  #myDiv01 {
+    margin-top: 30px;
+    padding: 15px;
+    border: 3px solid white;
+    border-radius: 10px;
+    background-color: rgba(255,255,255,0.2);
+    box-shadow: 0 0 15px rgba(0,0,0,0.3);
+  }
+</style>
+</head>
+
+<body>
+  <h2>T1A13 – Extend Class by Hayden</h2>
+  <h4>Example Working Classes Code</h4>
+
+  <input type="button" value="Example: Base Class Animal" onClick="{
+    let myDog = new myAnimal('Diesel', 13);
+    myDog.myShow();
+  }"><br>
+
+  <h4>Example: Extending Class Code</h4>
+
+  <input type="button" value='Example: Cat Class' onClick="{
+    let myPet = new myCat('Blossom', 5);
+    myPet.myShow();
+  }"><br>
+
+  <input type="button" value='Example: Dog Class' onClick="{
+    let myPet = new myDog('Rex', 7, 'German Shepherd');
+    myPet.myShow();
+    myPet.bark();
+  }"><br>
+
+  <input type="button" value='Example: Bird Class' onClick="{
+    let myPet = new myBird('Tweety', 2, 'Canary');
+    myPet.myShow();
+    myPet.sing();
+  }"><br>
+
+  <input type="button" value='Example: Fish Class' onClick="{
+    let myPet = new myFish('Bubbles', 1, 'Goldfish');
+    myPet.myShow();
+    myPet.swim();
+  }"><br>
+
+  <div id="myDiv01">Click the buttons above to test the classes!</div>
+
+  <script>
+    // --- Base Class ---
+    class myAnimal {
+      constructor(passName, passAge) {
+        this.myName = passName;
+        this.myAge = passAge;
+      }
+      myShow() {
+        document.getElementById('myDiv01').innerHTML = 
+          `Hello, my name is ${this.myName}. I am ${this.myAge} years old.<br>`;
+      }
     }
 
-    myShow(){
-      document.getElementById('myDiv01').innerHTML = 'Hello ' + this.myName + '<br>';
+    // --- Cat Class ---
+    class myCat extends myAnimal {
+      myShow() {
+        document.getElementById('myDiv01').innerHTML = 
+          `${this.myName} is a great cat who loves naps and tuna 🐱<br>`;
+      }
     }
-  } // end class myAnimal
-</script>
 
-<h2 align="center">t1a13-extend-class-by-hayden.html</h2>
-
-<h4>Example working classes code</h4>
-
-<input type="button" value="Example Class Set and Show Class Animal" onClick="{
-  let myDog = new myAnimal('Diesel', 13);
-  myDog.myShow();
-}">
-
-<h4>Example extending Class code</h4>
-
-Nothing: <input type="text" id="myText01" value="Useless at the moment"><br>
-
-<input type="button" value="Example Extend Class Animal" onClick="{
-  class myCat extends myAnimal {
-    myShow(){
-      document.getElementById('myDiv01').innerHTML = this.myName + ' is a great cat<br>';
+    // --- Dog Class ---
+    class myDog extends myAnimal {
+      constructor(passName, passAge, breed) {
+        super(passName, passAge);
+        this.breed = breed;
+      }
+      myShow() {
+        document.getElementById('myDiv01').innerHTML = 
+          `${this.myName} is a ${this.breed} who is ${this.myAge} years old 🐶<br>`;
+      }
+      bark() {
+        document.getElementById('myDiv01').innerHTML += 
+          `${this.myName} says: Woof! Woof!<br>`;
+      }
     }
-  }  // end extended class myCat
 
-  let myPet = new myCat('Blossom', 5);
-  myPet.myShow();
-}">
+    // --- Bird Class ---
+    class myBird extends myAnimal {
+      constructor(passName, passAge, species) {
+        super(passName, passAge);
+        this.species = species;
+      }
+      myShow() {
+        document.getElementById('myDiv01').innerHTML = 
+          `${this.myName} is a ${this.species} bird 🐦 and is ${this.myAge} years old.<br>`;
+      }
+      sing() {
+        document.getElementById('myDiv01').innerHTML += 
+          `${this.myName} sings a beautiful song 🎶<br>`;
+      }
+    }
 
-<div id="myDiv01">...</div>
+    // --- Fish Class ---
+    class myFish extends myAnimal {
+      constructor(passName, passAge, type) {
+        super(passName, passAge);
+        this.type = type;
+      }
+      myShow() {
+        document.getElementById('myDiv01').innerHTML = 
+          `${this.myName} is a ${this.type} fish who swims gracefully 🐠<br>`;
+      }
+      swim() {
+        document.getElementById('myDiv01').innerHTML += 
+          `${this.myName} swims around happily 💦<br>`;
+      }
+    }
+  </script>
+</body>
+</html>
