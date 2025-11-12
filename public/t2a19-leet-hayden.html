@@ -1,0 +1,53 @@
+<h1 align=center>t2a19-leet-hayden.html</h1>
+<li> ask chatgpt for a beginner friendly javascript leed code quesstion and make an html javascript single file answer without any CSS</li>
+<li>show prompt here</li>
+<img src="Screenshot 2025-11-12 125620.png" width="500">
+<li>show leet question here</li>
+<img src="Screenshot 2025-11-12 125657.png" width="500">
+<li>get the code working here</li>
+<!DOCTYPE html>
+<html>
+  <head>
+    <title>Two Sum - Beginner JS</title>
+  </head>
+  <body>
+    <h1>Two Sum Problem</h1>
+    <p>Enter numbers separated by commas:</p>
+    <input id="numsInput" type="text" placeholder="e.g. 2,7,11,15" />
+    <p>Enter target sum:</p>
+    <input id="targetInput" type="number" placeholder="e.g. 9" />
+    <br><br>
+    <button onclick="findTwoSum()">Find Two Sum</button>
+
+    <h3>Result:</h3>
+    <pre id="result"></pre>
+
+    <script>
+      function twoSum(nums, target) {
+        const map = new Map(); // stores number -> index
+        for (let i = 0; i < nums.length; i++) {
+          const complement = target - nums[i];
+          if (map.has(complement)) {
+            return [map.get(complement), i];
+          }
+          map.set(nums[i], i);
+        }
+        return []; // no solution
+      }
+
+      function findTwoSum() {
+        const numsStr = document.getElementById('numsInput').value;
+        const target = Number(document.getElementById('targetInput').value);
+        const nums = numsStr.split(',').map(n => Number(n.trim()));
+
+        const result = twoSum(nums, target);
+        document.getElementById('result').textContent =
+          result.length ? `Indices: [${result.join(', ')}]` : 'No solution found.';
+      }
+    </script>
+  </body>
+</html>
+
+
+<li>within PRE tags show your version of the leet answer without looking at the actual answer</li>
+<pre></pre>
