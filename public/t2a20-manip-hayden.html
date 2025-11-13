@@ -24,45 +24,96 @@ string, array, object manipulation methods<br>
   document.getElementById('mySpan01').innerHTML = keyArray
 }"><br>
 
-<!-- 7️⃣ String.split() and join() -->
-<input type="button" value='Split & Join words' onclick="{
-  let str = 'red,green,blue';
-  let arr = str.split(',');
-  alert(arr.join(' | '));  // red | green | blue
-}">
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>JavaScript Manipulation Method Examples</title>
+</head>
+<body>
 
-<!-- 6️⃣ String.replace() -->
-<input type="button" value='String.replace() changes text' onclick="{
-  let msg = 'I love Java';
-  alert(msg.replace('Java', 'JavaScript'));  // I love JavaScript
-}">
 
-<!-- 5️⃣ Array.reduce() -->
-<input type="button" value='Array.reduce() sums numbers' onclick="{
-  let nums = [10,20,30];
-  alert(nums.reduce((a,b) => a + b, 0));  // 60
-}">
+  <!-- 2️⃣ Object.values() -->
+  <div>
+    <input type="button" value="Object.values() returns values" onclick="{
+      let user = {name: 'Alex', age: 30, active: true};
+      document.getElementById('out2').textContent = Object.values(user);
+    }">
+    <div id='out2'></div>
+  </div>
 
-<!-- 4️⃣ Array.filter() -->
-<input type="button" value='Array.filter() filters evens' onclick="{
-  let nums = [1,2,3,4,5,6];
-  alert(nums.filter(x => x % 2 === 0));  // [2,4,6]
-}">
+  <!-- 3️⃣ Array.map() -->
+  <div>
+    <input type="button" value="Array.map() doubles numbers" onclick="{
+      let nums = [1,2,3,4];
+      document.getElementById('out3').textContent = nums.map(x => x * 2);
+    }">
+    <div id='out3'></div>
+  </div>
 
-<!-- 3️⃣ Array.map() -->
-<input type="button" value='Array.map() doubles numbers' onclick="{
-  let nums = [1,2,3,4];
-  alert(nums.map(x => x * 2));  // [2,4,6,8]
-}">
+  <!-- 4️⃣ Array.filter() -->
+  <div>
+    <input type="button" value="Array.filter() filters evens" onclick="{
+      let nums = [1,2,3,4,5,6];
+      document.getElementById('out4').textContent = nums.filter(x => x % 2 === 0);
+    }">
+    <div id='out4'></div>
+  </div>
 
-<!-- 9️⃣ Array.reverse() -->
-<input type="button" value='Array.reverse() flips order' onclick="{
-  let arr = ['a','b','c'];
-  alert(arr.reverse());  // ['c','b','a']
-}">
+  <!-- 5️⃣ Array.reduce() -->
+  <div>
+    <input type="button" value="Array.reduce() sums numbers" onclick="{
+      let nums = [10,20,30];
+      document.getElementById('out5').textContent = nums.reduce((a,b)=>a+b,0);
+    }">
+    <div id='out5'></div>
+  </div>
 
-<!-- 🔟 JSON.stringify() -->
-<input type="button" value='JSON.stringify() converts to JSON' onclick="{
-  let person = {name:'Luna', age:22};
-  alert(JSON.stringify(person));  // '{"name":"Luna","age":22}'
-}">
+  <!-- 6️⃣ String.replace() -->
+  <div>
+    <input type="button" value="String.replace() changes text" onclick="{
+      let msg = 'I love Java';
+      document.getElementById('out6').textContent = msg.replace('Java', 'JavaScript');
+    }">
+    <div id='out6'></div>
+  </div>
+
+  <!-- 7️⃣ String.split() + join() -->
+  <div>
+    <input type="button" value="Split & Join words" onclick="{
+      let str = 'red,green,blue';
+      let arr = str.split(',');
+      document.getElementById('out7').textContent = arr.join(' | ');
+    }">
+    <div id='out7'></div>
+  </div>
+
+  <!-- 8️⃣ Array.sort() -->
+  <div>
+    <input type="button" value="Array.sort() sorts numbers" onclick="{
+      let nums = [4,1,3,2];
+      document.getElementById('out8').textContent = nums.sort((a,b)=>a-b);
+    }">
+    <div id='out8'></div>
+  </div>
+
+  <!-- 9️⃣ Array.reverse() -->
+  <div>
+    <input type="button" value="Array.reverse() flips order" onclick="{
+      let arr = ['a','b','c'];
+      document.getElementById('out9').textContent = arr.reverse();
+    }">
+    <div id='out9'></div>
+  </div>
+
+  <!-- 🔟 JSON.stringify() -->
+  <div>
+    <input type="button" value="JSON.stringify() converts to JSON" onclick="{
+      let person = {name:'Luna', age:22};
+      document.getElementById('out10').textContent = JSON.stringify(person);
+    }">
+    <div id='out10'></div>
+  </div>
+
+</body>
+</html>
