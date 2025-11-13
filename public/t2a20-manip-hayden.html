@@ -1,0 +1,68 @@
+<h1 align=center> t2a20-manip-hayden.html</h1>
+
+string, array, object manipulation methods<br>
+<input id="myNum01" type=text value="this is a strig" ><br>
+<span id="mySpan01">...</span><br>
+
+<input type=button value=".toUpperCase()" onclick="{
+  let myIn = document.getElementById('myNum01').value
+  document.getElementById('mySpan01').innerHTML = myIn.toUpperCase()
+}"><br>
+
+<input type=button value=".split() nakes an array" onclick="{
+  let myIn = document.getElementById('myNum01').value
+  document.getElementById('mySpan01').innerHTML = myIn.split('')
+}"><br>
+
+<input type=button value="Object.keys() returns array" onclick="{
+  let myObject = {
+    first: 20,
+    secont: 'hi',
+    third: false
+  }
+  let keyArray = Object.keys(myObject)
+  document.getElementById('mySpan01').innerHTML = keyArray
+}"><br>
+
+<!-- 7️⃣ String.split() and join() -->
+<input type="button" value='Split & Join words' onclick="{
+  let str = 'red,green,blue';
+  let arr = str.split(',');
+  alert(arr.join(' | '));  // red | green | blue
+}">
+
+<!-- 6️⃣ String.replace() -->
+<input type="button" value='String.replace() changes text' onclick="{
+  let msg = 'I love Java';
+  alert(msg.replace('Java', 'JavaScript'));  // I love JavaScript
+}">
+
+<!-- 5️⃣ Array.reduce() -->
+<input type="button" value='Array.reduce() sums numbers' onclick="{
+  let nums = [10,20,30];
+  alert(nums.reduce((a,b) => a + b, 0));  // 60
+}">
+
+<!-- 4️⃣ Array.filter() -->
+<input type="button" value='Array.filter() filters evens' onclick="{
+  let nums = [1,2,3,4,5,6];
+  alert(nums.filter(x => x % 2 === 0));  // [2,4,6]
+}">
+
+<!-- 3️⃣ Array.map() -->
+<input type="button" value='Array.map() doubles numbers' onclick="{
+  let nums = [1,2,3,4];
+  alert(nums.map(x => x * 2));  // [2,4,6,8]
+}">
+
+<!-- 9️⃣ Array.reverse() -->
+<input type="button" value='Array.reverse() flips order' onclick="{
+  let arr = ['a','b','c'];
+  alert(arr.reverse());  // ['c','b','a']
+}">
+
+<!-- 🔟 JSON.stringify() -->
+<input type="button" value='JSON.stringify() converts to JSON' onclick="{
+  let person = {name:'Luna', age:22};
+  alert(JSON.stringify(person));  // '{"name":"Luna","age":22}'
+}">
