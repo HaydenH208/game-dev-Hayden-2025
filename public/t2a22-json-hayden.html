@@ -1,24 +1,250 @@
  <h1 align="center">t2a22-json-fred.html</h1>
 
-  <script>
-    async function fetchData(url){
-      const response = await fetch(url);
-      const data =  await response.json();
-      console.log(data);
+<!DOCTYPE html>
+<html>
+<body>
 
-      const myJson = JSON.stringify(data, null, 2);
-      document.getElementById('myDiv1').innerHTML = `<pre>${myJson}</pre>`;
+<h1 align="center">JSON Demo Mega Pack</h1>
 
-      document.getElementById('myDiv1').innerHTML += `<img src="${data.image}" alt="Random Image" style="max-width: 100%; height: auto;">`;
-    
-   }
+<!-- 1. Basic JSON -->
+<h2>1. Basic JSON</h2>
+<button onclick="basic()">Show</button>
+<pre id="out_basic"></pre>
 
-  </script>
+<!-- 2. JSON + Image -->
+<h2>2. JSON + Image</h2>
+<button onclick="jsonImg()">Show</button>
+<div id="out_img"></div>
 
+<!-- 3. Array of Objects -->
+<h2>3. People</h2>
+<button onclick="people()">Show</button>
+<pre id="out_people"></pre>
 
-  <select id="mySelect" size="1" onchange="fetchData(this.value)">
-    <option ></option>   
-    <option value="https://randomfox.ca/floof/">randomfox</option>
-  </select><br><br>
+<!-- 4. Nested JSON -->
+<h2>4. Game Player</h2>
+<button onclick="player()">Show</button>
+<pre id="out_player"></pre>
 
-  <div id="myDiv1">...</div>
+<!-- 5. Dropdown Select JSON -->
+<h2>5. Select Item</h2>
+<select id="sel" onchange="pick()">
+  <option></option>
+  <option value="apple">Apple</option>
+  <option value="cat">Cat</option>
+  <option value="car">Car</option>
+</select>
+<pre id="out_pick"></pre>
+
+<!-- 6. Quiz Generator -->
+<h2>6. Quiz</h2>
+<button onclick="quiz()">New Question</button>
+<pre id="out_quiz"></pre>
+
+<!-- 7. Product Catalog -->
+<h2>7. Products</h2>
+<button onclick="products()">Show</button>
+<pre id="out_products"></pre>
+
+<!-- 8. Character Creator -->
+<h2>8. Character Creator</h2>
+<button onclick="char()">Generate</button>
+<pre id="out_char"></pre>
+
+<!-- 9. Math Practice -->
+<h2>9. Math Problem</h2>
+<button onclick="math()">New Problem</button>
+<pre id="out_math"></pre>
+
+<!-- 10. Weather Simulator -->
+<h2>10. Weather</h2>
+<button onclick="weather()">Random Weather</button>
+<pre id="out_weather"></pre>
+
+<!-- 11. Animation -->
+<h2>11. Box Mover</h2>
+<button onclick="moveBox()">Move</button>
+<div id="box" style="width:50px;height:50px;background:gray;position:relative;"></div>
+
+<!-- 12. Story Generator -->
+<h2>12. Story Generator</h2>
+<button onclick="story()">New Story</button>
+<pre id="out_story"></pre>
+
+<!-- 13. Student Grades -->
+<h2>13. Students</h2>
+<button onclick="students()">Show</button>
+<pre id="out_students"></pre>
+
+<!-- 14. Restaurant Menu -->
+<h2>14. Menu</h2>
+<button onclick="menu()">Show</button>
+<pre id="out_menu"></pre>
+
+<!-- 15. Emoji -->
+<h2>15. Random Emoji</h2>
+<button onclick="emoji()">Random</button>
+<pre id="out_emoji"></pre>
+
+<script>
+// 1
+function basic() {
+  const data = { message: "Hello World", number: 123 };
+  out_basic.textContent = JSON.stringify(data, null, 2);
+}
+
+// 2
+function jsonImg() {
+  const data = {
+    title: "Robot",
+    image: "https://picsum.photos/200"
+  };
+  out_img.innerHTML =
+    "<pre>" + JSON.stringify(data, null, 2) + "</pre>" +
+    "<img src='" + data.image + "'>";
+}
+
+// 3
+function people() {
+  const list = [
+    { name: "Alice", age: 20 },
+    { name: "Bob", age: 21 },
+    { name: "Cara", age: 19 }
+  ];
+  out_people.textContent = JSON.stringify(list, null, 2);
+}
+
+// 4
+function player() {
+  const data = {
+    name: "Hero",
+    level: 6,
+    inventory: {
+      coins: 40,
+      items: ["sword", "shield", "potion"]
+    }
+  };
+  out_player.textContent = JSON.stringify(data, null, 2);
+}
+
+// 5
+function pick() {
+  const data = {
+    apple: { color: "red", taste: "sweet" },
+    cat: { breed: "Tabby", age: 3 },
+    car: { make: "Honda", year: 2019 }
+  };
+  out_pick.textContent = JSON.stringify(data[sel.value], null, 2);
+}
+
+// 6
+function quiz() {
+  const questions = [
+    { q: "2 + 2 = ?", a: "4" },
+    { q: "Capital of France?", a: "Paris" },
+    { q: "Color of the sky?", a: "Blue" }
+  ];
+  const rand = questions[Math.floor(Math.random() * questions.length)];
+  out_quiz.textContent = JSON.stringify(rand, null, 2);
+}
+
+// 7
+function products() {
+  const items = [
+    { id: 1, name: "Pencil", price: 1 },
+    { id: 2, name: "Notebook", price: 3 },
+    { id: 3, name: "Backpack", price: 15 }
+  ];
+  out_products.textContent = JSON.stringify(items, null, 2);
+}
+
+// 8
+function char() {
+  const classes = ["Warrior", "Mage", "Rogue"];
+  const data = {
+    name: "Player" + Math.floor(Math.random() * 100),
+    class: classes[Math.floor(Math.random() * classes.length)],
+    stats: {
+      hp: Math.floor(Math.random() * 100),
+      attack: Math.floor(Math.random() * 20),
+      defense: Math.floor(Math.random() * 20)
+    }
+  };
+  out_char.textContent = JSON.stringify(data, null, 2);
+}
+
+// 9
+function math() {
+  const a = Math.floor(Math.random() * 10);
+  const b = Math.floor(Math.random() * 10);
+  const problem = { question: `${a} + ${b} = ?`, answer: a + b };
+  out_math.textContent = JSON.stringify(problem, null, 2);
+}
+
+// 10
+function weather() {
+  const states = ["Sunny", "Rainy", "Cloudy", "Snowy"];
+  const data = {
+    temp: Math.floor(Math.random() * 30),
+    condition: states[Math.floor(Math.random() * states.length)]
+  };
+  out_weather.textContent = JSON.stringify(data, null, 2);
+}
+
+// 11
+function moveBox() {
+  const anim = { distance: 200, speed: 10 };
+  let x = 0;
+
+  const timer = setInterval(() => {
+    x += anim.speed;
+    box.style.left = x + "px";
+    if (x >= anim.distance) clearInterval(timer);
+  }, 50);
+}
+
+// 12
+function story() {
+  const chars = ["dragon", "wizard", "robot"];
+  const places = ["forest", "castle", "space station"];
+  const actions = ["found treasure", "fought a monster", "saved the world"];
+
+  const data = {
+    character: chars[Math.floor(Math.random() * chars.length)],
+    place: places[Math.floor(Math.random() * places.length)],
+    action: actions[Math.floor(Math.random() * actions.length)]
+  };
+
+  out_story.textContent = JSON.stringify(data, null, 2);
+}
+
+// 13
+function students() {
+  const data = [
+    { name: "Liam", grade: 88 },
+    { name: "Emma", grade: 92 },
+    { name: "Noah", grade: 79 }
+  ];
+  out_students.textContent = JSON.stringify(data, null, 2);
+}
+
+// 14
+function menu() {
+  const data = {
+    breakfast: ["eggs", "toast", "pancakes"],
+    lunch: ["burger", "salad", "pizza"],
+    dinner: ["steak", "pasta", "fish"]
+  };
+  out_menu.textContent = JSON.stringify(data, null, 2);
+}
+
+// 15
+function emoji() {
+  const list = ["😀", "🐱", "🚗", "🌲", "⚡", "🔥"];
+  const data = { emoji: list[Math.floor(Math.random() * list.length)] };
+  out_emoji.textContent = JSON.stringify(data, null, 2);
+}
+</script>
+
+</body>
+</html>
