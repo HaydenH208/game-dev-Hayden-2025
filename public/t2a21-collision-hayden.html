@@ -1,24 +1,32 @@
 <script>
 
-// global functions here
-function myHitOther(my1, my2) {
-    const r1 = document.getElementById(my1).getBoundingClientRect();
-    const r2 = document.getElementById(my2).getBoundingClientRect();
+// --- Get bounding box for any element ---
+function getBox(id) {
+    return document.getElementById(id).getBoundingClientRect();
+}
+
+// --- Check collision between two elements ---
+function hitTest(id1, id2) {
+    const a = getBox(id1);
+    const b = getBox(id2);
 
     return !(
-        r1.right < r2.left ||
-        r1.left > r2.right ||
-        r1.bottom < r2.top ||
-        r1.top > r2.bottom
+        a.right < b.left ||
+        a.left > b.right ||
+        a.bottom < b.top ||
+        a.top > b.bottom
     );
 }
 
-function myCheckHit() {
-    if (myHitOther('myImg01', 'myImg02')) {
-        alert('you lose');
-        document.getElementById('myImg01').style.left = '20px';
-        location.href = 't2a13-keydown.html';  // go to your next level
+// --- Main hit check function ---
+function checkHit() {
+    if (hitTest('myImg01', 'myImg02')) {
+        alert("You lose!");
+        document.getElementById('myImg01').style.left = "20px";
+        document.getElementById('myImg01').style.top = "20px";
+        location.href = "t2a13-keydown.html";  // go to next level
     }
 }
 
 </script>
+
