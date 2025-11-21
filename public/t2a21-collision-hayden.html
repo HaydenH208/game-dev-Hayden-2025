@@ -61,7 +61,10 @@ function myCheckHit() {
         const p = document.getElementById('myImg01');
         p.style.left = "20px";
         p.style.top  = "20px";
-        location.href = "t2a13-keydown.html";
+       setTimeout(() => {
+    window.location.reload();
+}, 200);
+
     }
 }
 
