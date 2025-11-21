@@ -1,12 +1,16 @@
 <script>
 
-// --- Get bounding box for any element ---
+// ------------------------------
+// GET BOUNDING BOX
+// ------------------------------
 function getBox(id) {
     return document.getElementById(id).getBoundingClientRect();
 }
 
-// --- Check collision between two elements ---
-function hitTest(id1, id2) {
+// ------------------------------
+// COLLISION DETECTION
+// ------------------------------
+function myHitOther(id1, id2) {
     const a = getBox(id1);
     const b = getBox(id2);
 
@@ -18,15 +22,44 @@ function hitTest(id1, id2) {
     );
 }
 
-// --- Main hit check function ---
-function checkHit() {
-    if (hitTest('myImg01', 'myImg02')) {
+// ------------------------------
+// CHECK HIT
+// ------------------------------
+function myCheckHit() {
+    if (myHitOther('myImg01', 'myImg02')) {
         alert("You lose!");
         document.getElementById('myImg01').style.left = "20px";
-        document.getElementById('myImg01').style.top = "20px";
-        location.href = "t2a13-keydown.html";  // go to next level
+        document.getElementById('myImg01').style.top  = "20px";
+        location.href = "t2a13-keydown.html";
     }
 }
 
-</script>
+// ------------------------------
+// MOVEMENT SYSTEM (ARROW KEYS)
+// ------------------------------
+document.addEventListener("keydown", function (event) {
 
+    const player = document.getElementById("myImg01");
+
+    // If style.left isn't set yet, give it defaults
+    if (!player.style.left) player.style.left = "20px";
+    if (!player.style.top)  player.style.top  = "20px";
+
+    let left = parseInt(player.style.left);
+    let top  = parseInt(player.style.top);
+
+    const speed = 10; // movement speed
+
+    if (event.key === "ArrowUp")    top  -= speed;
+    if (event.key === "ArrowDown")  top  += speed;
+    if (event.key === "ArrowLeft")  left -= speed;
+    if (event.key === "ArrowRight") left += speed;
+
+    player.style.left = left + "px";
+    player.style.top  = top  + "px";
+
+    // after moving → check collision
+    myCheckHit();
+});
+
+</script>
