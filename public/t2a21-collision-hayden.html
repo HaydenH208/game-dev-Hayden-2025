@@ -1,5 +1,35 @@
-<script>
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="UTF-8">
+<title>Collision Game</title>
 
+<style>
+    body {
+        margin: 0;
+        overflow: hidden;
+        background: #eef;
+    }
+
+    /* Player + Enemy must be absolutely positioned */
+    #myImg01, #myImg02 {
+        position: absolute;
+        width: 80px;
+        height: 80px;
+    }
+
+    /* Starting positions */
+    #myImg01 { left: 20px; top: 20px; }
+    #myImg02 { left: 300px; top: 200px; }
+</style>
+</head>
+<body>
+
+<!-- Player and enemy -->
+<img id="myImg01" src="https://via.placeholder.com/80/00f/fff?text=P">
+<img id="myImg02" src="https://via.placeholder.com/80/f00/fff?text=E">
+
+<script>
 // ------------------------------
 // GET BOUNDING BOX
 // ------------------------------
@@ -28,38 +58,46 @@ function myHitOther(id1, id2) {
 function myCheckHit() {
     if (myHitOther('myImg01', 'myImg02')) {
         alert("You lose!");
-        document.getElementById('myImg01').style.left = "20px";
-        document.getElementById('myImg01').style.top  = "20px";
-        location.href = "t2a13-keydown.html";
+        const p = document.getElementById('myImg01');
+        p.style.left = "20px";
+        p.style.top  = "20px";
+        location.href = "t2a13-keydown.html";   // redirect
     }
 }
 
 // ------------------------------
-// MOVEMENT SYSTEM (ARROW KEYS)
+// MOVEMENT SYSTEM (ARROWS + WASD)
 // ------------------------------
 document.addEventListener("keydown", function (event) {
 
     const player = document.getElementById("myImg01");
 
-    // If style.left isn't set yet, give it defaults
-    if (!player.style.left) player.style.left = "20px";
-    if (!player.style.top)  player.style.top  = "20px";
-
     let left = parseInt(player.style.left);
     let top  = parseInt(player.style.top);
 
-    const speed = 10; // movement speed
+    const speed = 10;
 
+    // ARROWS
     if (event.key === "ArrowUp")    top  -= speed;
     if (event.key === "ArrowDown")  top  += speed;
     if (event.key === "ArrowLeft")  left -= speed;
     if (event.key === "ArrowRight") left += speed;
 
+    // WASD
+    if (event.key === "w" || event.key === "W") top  -= speed;
+    if (event.key === "s" || event.key === "S") top  += speed;
+    if (event.key === "a" || event.key === "A") left -= speed;
+    if (event.key === "d" || event.key === "D") left += speed;
+
+    // Apply movement
     player.style.left = left + "px";
     player.style.top  = top  + "px";
 
-    // after moving → check collision
+    // After movement → check collision
     myCheckHit();
 });
 
 </script>
+
+</body>
+</html>
