@@ -77,7 +77,9 @@ document.body.addEventListener("keydown", function(event) {
     let top  = parseInt(player.style.top);
 
     // Movement
-    if (event.key === "ArrowUp" || event.key === "w" || event.key === "W")    top  -= speed;
+    if ((key["ArrowUp"] || key["w"] || key["W"[)   && this.x. > 0) {
+        this.vy=player_move_speed;
+    }
     if (event.key === "ArrowDown" || event.key === "s" || event.key === "S")  top  += speed;
     if (event.key === "ArrowLeft" || event.key === "a" || event.key === "A")  left -= speed;
     if (event.key === "ArrowRight" || event.key === "d" || event.key === "D") left += speed;
