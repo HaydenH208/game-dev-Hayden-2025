@@ -20,6 +20,7 @@
 </head>
 <body>
 
+<!-- Player and enemy -->
 <img id="myImg01" src="ignore/BaskingShark.jpg" style="left:20px; top:20px;">
 <img id="myImg02" src="ignore/pukeko.jpg" style="left:300px; top:200px;">
 
@@ -56,41 +57,67 @@ document.addEventListener("keydown", e => keys[e.key] = true);
 document.addEventListener("keyup",   e => keys[e.key] = false);
 
 // ------------------------------
-// GAME LOOP WITH COLLISION BLOCKING
+// GAME LOOP
 // ------------------------------
 function gameLoop() {
     const player = document.getElementById("myImg01");
+    const enemy  = document.getElementById("myImg02");
 
-    let left = parseInt(player.style.left);
-    let top  = parseInt(player.style.top);
+    // Player old position
+    let pLeft = parseInt(player.style.left);
+    let pTop  = parseInt(player.style.top);
 
-    let oldLeft = left;   // store old pos
-    let oldTop  = top;
+    let pOldLeft = pLeft;
+    let pOldTop  = pTop;
 
-    // Move
-    if (keys["ArrowUp"]    || keys["w"] || keys["W"]) top  -= speed;
-    if (keys["ArrowDown"]  || keys["s"] || keys["S"]) top  += speed;
-    if (keys["ArrowLeft"]  || keys["a"] || keys["A"]) left -= speed;
-    if (keys["ArrowRight"] || keys["d"] || keys["D"]) left += speed;
+    // Enemy old position
+    let eLeft = parseInt(enemy.style.left);
+    let eTop  = parseInt(enemy.style.top);
 
-    // Boundaries
+    // -------------------------
+    // MOVE PLAYER
+    // -------------------------
+    if (keys["ArrowUp"]    || keys["w"] || keys["W"]) pTop  -= speed;
+    if (keys["ArrowDown"]  || keys["s"] || keys["S"]) pTop  += speed;
+    if (keys["ArrowLeft"]  || keys["a"] || keys["A"]) pLeft -= speed;
+    if (keys["ArrowRight"] || keys["d"] || keys["D"]) pLeft += speed;
+
+    // Keep player in bounds
     const maxLeft = window.innerWidth  - player.offsetWidth;
     const maxTop  = window.innerHeight - player.offsetHeight;
 
-    left = Math.max(0, Math.min(left, maxLeft));
-    top  = Math.max(0, Math.min(top, maxTop));
+    pLeft = Math.max(0, Math.min(pLeft, maxLeft));
+    pTop  = Math.max(0, Math.min(pTop, maxTop));
 
-    // Apply new pos
-    player.style.left = left + "px";
-    player.style.top  = top  + "px";
+    // Apply player movement
+    player.style.left = pLeft + "px";
+    player.style.top  = pTop + "px";
 
-    // Check collision
+    // -------------------------
+    // HANDLE COLLISION + PUSH
+    // -------------------------
     if (hit("myImg01", "myImg02")) {
-        console.log("HIT!");
 
-        // Undo movement (collision resolution)
-        player.style.left = oldLeft + "px";
-        player.style.top  = oldTop  + "px";
+        // Determine push direction
+        let dx = pLeft - pOldLeft; // movement direction X
+        let dy = pTop - pOldTop;   // movement direction Y
+
+        // Push enemy the same amount
+        eLeft += dx;
+        eTop  += dy;
+
+        // Enemy boundaries
+        const eMaxLeft = window.innerWidth  - enemy.offsetWidth;
+        const eMaxTop  = window.innerHeight - enemy.offsetHeight;
+
+        eLeft = Math.max(0, Math.min(eLeft, eMaxLeft));
+        eTop  = Math.max(0, Math.min(eTop, eMaxTop));
+
+        // Apply enemy movement
+        enemy.style.left = eLeft + "px";
+        enemy.style.top  = eTop  + "px";
+
+        console.log("PUSH!");
     }
 
     requestAnimationFrame(gameLoop);
