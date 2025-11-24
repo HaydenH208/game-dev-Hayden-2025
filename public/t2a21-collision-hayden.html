@@ -3,6 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <title>t2a21-collision-hayden</title>
+
 <style>
     body {
         margin: 0;
@@ -13,16 +14,17 @@
     /* Player + Enemy */
     #myImg01, #myImg02 {
         position: absolute;
-        width: 100px;   /* Adjust player/enemy size here */
+        width: 100px;
         height: 100px;
     }
 
-    /* Starting positions */
+    /* Starting positions (CSS is OK now because we read computed styles) */
     #myImg01 { left: 20px; top: 20px; }
     #myImg02 { left: 300px; top: 200px; }
 </style>
+
 </head>
-<body tabindex="0">
+<body>
 
 <!-- Player and enemy -->
 <img id="myImg01" src="ignore/BaskingShark.jpg">
@@ -63,33 +65,55 @@ function myCheckHit() {
     }
 }
 
-document.body.addEventListener("keydown", function(event) {
+// ------------------------------
+// SMOOTH MOVEMENT SYSTEM
+// ------------------------------
+const keys = {};     // tracks which keys are held
+const speed = 5;     // speed per frame
+
+document.addEventListener("keydown", e => {
+    keys[e.key] = true;
+});
+
+document.addEventListener("keyup", e => {
+    keys[e.key] = false;
+});
+
+// ------------------------------
+// GAME LOOP (runs 60 times/sec)
+// ------------------------------
+function gameLoop() {
     const player = document.getElementById("myImg01");
-    const speed = 10;
+    const cs = getComputedStyle(player);
 
-    let left = parseInt(player.style.left);
-    let top  = parseInt(player.style.top);
+    let left = parseInt(cs.left);
+    let top  = parseInt(cs.top);
 
-    // Movement keys
-    if (event.key === "ArrowUp"    || event.key === "w" || event.key === "W") top  -= speed;
-    if (event.key === "ArrowDown"  || event.key === "s" || event.key === "S") top  += speed;
-    if (event.key === "ArrowLeft"  || event.key === "a" || event.key === "A") left -= speed;
-    if (event.key === "ArrowRight" || event.key === "d" || event.key === "D") left += speed;
+    // Movement (smooth)
+    if (keys["ArrowUp"]    || keys["w"] || keys["W"]) top  -= speed;
+    if (keys["ArrowDown"]  || keys["s"] || keys["S"]) top  += speed;
+    if (keys["ArrowLeft"]  || keys["a"] || keys["A"]) left -= speed;
+    if (keys["ArrowRight"] || keys["d"] || keys["D"]) left += speed;
 
     // Boundaries
-    const maxLeft = window.innerWidth - player.offsetWidth;
+    const maxLeft = window.innerWidth  - player.offsetWidth;
     const maxTop  = window.innerHeight - player.offsetHeight;
 
     left = Math.max(0, Math.min(left, maxLeft));
     top  = Math.max(0, Math.min(top, maxTop));
 
-    // Apply movement
+    // Apply new position
     player.style.left = left + "px";
-    player.style.top  = top + "px";
+    player.style.top  = top  + "px";
 
-    // Collision
+    // Collision check
     myCheckHit();
-});
+
+    requestAnimationFrame(gameLoop);
+}
+
+// Start loop
+gameLoop();
 
 </script>
 
