@@ -18,7 +18,7 @@
         height: 100px;
     }
 
-    /* Starting positions (CSS is OK now because we read computed styles) */
+    /* Starting positions */
     #myImg01 { left: 20px; top: 20px; }
     #myImg02 { left: 300px; top: 200px; }
 </style>
@@ -54,33 +54,25 @@ function myHitOther(id1, id2) {
 }
 
 // ------------------------------
-// CHECK HIT
+// CHECK HIT (NO ALERT)
 // ------------------------------
 function myCheckHit() {
     if (myHitOther('myImg01', 'myImg02')) {
-        alert("You lose!");
-        const p = document.getElementById('myImg01');
-        p.style.left = "20px";
-        p.style.top  = "20px";
+        console.log("HIT!");  // <-- collision feedback only
     }
 }
 
 // ------------------------------
 // SMOOTH MOVEMENT SYSTEM
 // ------------------------------
-const keys = {};     // tracks which keys are held
-const speed = 5;     // speed per frame
+const keys = {};     
+const speed = 5;     
 
-document.addEventListener("keydown", e => {
-    keys[e.key] = true;
-});
-
-document.addEventListener("keyup", e => {
-    keys[e.key] = false;
-});
+document.addEventListener("keydown", e => keys[e.key] = true);
+document.addEventListener("keyup",   e => keys[e.key] = false);
 
 // ------------------------------
-// GAME LOOP (runs 60 times/sec)
+// GAME LOOP
 // ------------------------------
 function gameLoop() {
     const player = document.getElementById("myImg01");
@@ -106,13 +98,12 @@ function gameLoop() {
     player.style.left = left + "px";
     player.style.top  = top  + "px";
 
-    // Collision check
+    // Check collision
     myCheckHit();
 
     requestAnimationFrame(gameLoop);
 }
 
-// Start loop
 gameLoop();
 
 </script>
