@@ -17,17 +17,15 @@
         height: 100px;
     }
 </style>
-
 </head>
 <body>
 
-<!-- Player and enemy WITH inline starting positions -->
 <img id="myImg01" src="ignore/BaskingShark.jpg" style="left:20px; top:20px;">
 <img id="myImg02" src="ignore/pukeko.jpg" style="left:300px; top:200px;">
 
 <script>
 // ------------------------------
-// GET BOUNDING BOX
+// BOUNDING BOX
 // ------------------------------
 function getBox(id) {
     return document.getElementById(id).getBoundingClientRect();
@@ -36,7 +34,7 @@ function getBox(id) {
 // ------------------------------
 // COLLISION DETECTION
 // ------------------------------
-function myHitOther(id1, id2) {
+function hit(id1, id2) {
     const a = getBox(id1);
     const b = getBox(id2);
 
@@ -49,16 +47,7 @@ function myHitOther(id1, id2) {
 }
 
 // ------------------------------
-// CHECK HIT
-// ------------------------------
-function myCheckHit() {
-    if (myHitOther("myImg01", "myImg02")) {
-        console.log("HIT!");
-    }
-}
-
-// ------------------------------
-// SMOOTH MOVEMENT SYSTEM
+// SMOOTH MOVEMENT
 // ------------------------------
 const keys = {};
 const speed = 5;
@@ -67,16 +56,18 @@ document.addEventListener("keydown", e => keys[e.key] = true);
 document.addEventListener("keyup",   e => keys[e.key] = false);
 
 // ------------------------------
-// GAME LOOP
+// GAME LOOP WITH COLLISION BLOCKING
 // ------------------------------
 function gameLoop() {
     const player = document.getElementById("myImg01");
 
-    // Read numeric left/top directly from inline style
     let left = parseInt(player.style.left);
     let top  = parseInt(player.style.top);
 
-    // Movement
+    let oldLeft = left;   // store old pos
+    let oldTop  = top;
+
+    // Move
     if (keys["ArrowUp"]    || keys["w"] || keys["W"]) top  -= speed;
     if (keys["ArrowDown"]  || keys["s"] || keys["S"]) top  += speed;
     if (keys["ArrowLeft"]  || keys["a"] || keys["A"]) left -= speed;
@@ -89,12 +80,18 @@ function gameLoop() {
     left = Math.max(0, Math.min(left, maxLeft));
     top  = Math.max(0, Math.min(top, maxTop));
 
-    // Apply movement (this instantly updates the bounding box)
+    // Apply new pos
     player.style.left = left + "px";
     player.style.top  = top  + "px";
 
-    // Collision detection
-    myCheckHit();
+    // Check collision
+    if (hit("myImg01", "myImg02")) {
+        console.log("HIT!");
+
+        // Undo movement (collision resolution)
+        player.style.left = oldLeft + "px";
+        player.style.top  = oldTop  + "px";
+    }
 
     requestAnimationFrame(gameLoop);
 }
