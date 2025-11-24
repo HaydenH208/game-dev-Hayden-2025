@@ -11,24 +11,19 @@
         background: #eef;
     }
 
-    /* Player + Enemy */
     #myImg01, #myImg02 {
         position: absolute;
         width: 100px;
         height: 100px;
     }
-
-    /* Starting positions */
-    #myImg01 { left: 20px; top: 20px; }
-    #myImg02 { left: 300px; top: 200px; }
 </style>
 
 </head>
 <body>
 
-<!-- Player and enemy -->
-<img id="myImg01" src="ignore/BaskingShark.jpg">
-<img id="myImg02" src="ignore/pukeko.jpg">
+<!-- Player and enemy WITH inline starting positions -->
+<img id="myImg01" src="ignore/BaskingShark.jpg" style="left:20px; top:20px;">
+<img id="myImg02" src="ignore/pukeko.jpg" style="left:300px; top:200px;">
 
 <script>
 // ------------------------------
@@ -54,19 +49,19 @@ function myHitOther(id1, id2) {
 }
 
 // ------------------------------
-// CHECK HIT (NO ALERT)
+// CHECK HIT
 // ------------------------------
 function myCheckHit() {
-    if (myHitOther('myImg01', 'myImg02')) {
-        console.log("HIT!");  // <-- collision feedback only
+    if (myHitOther("myImg01", "myImg02")) {
+        console.log("HIT!");
     }
 }
 
 // ------------------------------
 // SMOOTH MOVEMENT SYSTEM
 // ------------------------------
-const keys = {};     
-const speed = 5;     
+const keys = {};
+const speed = 5;
 
 document.addEventListener("keydown", e => keys[e.key] = true);
 document.addEventListener("keyup",   e => keys[e.key] = false);
@@ -76,12 +71,12 @@ document.addEventListener("keyup",   e => keys[e.key] = false);
 // ------------------------------
 function gameLoop() {
     const player = document.getElementById("myImg01");
-    const cs = getComputedStyle(player);
 
-    let left = parseInt(cs.left);
-    let top  = parseInt(cs.top);
+    // Read numeric left/top directly from inline style
+    let left = parseInt(player.style.left);
+    let top  = parseInt(player.style.top);
 
-    // Movement (smooth)
+    // Movement
     if (keys["ArrowUp"]    || keys["w"] || keys["W"]) top  -= speed;
     if (keys["ArrowDown"]  || keys["s"] || keys["S"]) top  += speed;
     if (keys["ArrowLeft"]  || keys["a"] || keys["A"]) left -= speed;
@@ -94,18 +89,17 @@ function gameLoop() {
     left = Math.max(0, Math.min(left, maxLeft));
     top  = Math.max(0, Math.min(top, maxTop));
 
-    // Apply new position
+    // Apply movement (this instantly updates the bounding box)
     player.style.left = left + "px";
     player.style.top  = top  + "px";
 
-    // Check collision
+    // Collision detection
     myCheckHit();
 
     requestAnimationFrame(gameLoop);
 }
 
 gameLoop();
-
 </script>
 
 </body>
