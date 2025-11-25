@@ -1,4 +1,4 @@
- <h1 align="center">t2a22-json-fred.html</h1>
+<h1 align="center">t2a22-json-fred.html</h1>
 
 <!DOCTYPE html>
 <html>
@@ -11,20 +11,32 @@
 <button onclick="basic()">Show</button>
 <pre id="out_basic"></pre>
 
+<button onclick="showAPI_basic()">Show API</button>
+<pre id="api_basic"></pre>
+
 <!-- 2. JSON + Image -->
 <h2>2. JSON + Image</h2>
 <button onclick="jsonImg()">Show</button>
 <div id="out_img"></div>
+
+<button onclick="showAPI_img()">Show API</button>
+<pre id="api_img"></pre>
 
 <!-- 3. Array of Objects -->
 <h2>3. People</h2>
 <button onclick="people()">Show</button>
 <pre id="out_people"></pre>
 
+<button onclick="showAPI_people()">Show API</button>
+<pre id="api_people"></pre>
+
 <!-- 4. Nested JSON -->
 <h2>4. Game Player</h2>
 <button onclick="player()">Show</button>
 <pre id="out_player"></pre>
+
+<button onclick="showAPI_player()">Show API</button>
+<pre id="api_player"></pre>
 
 <!-- 5. Dropdown Select JSON -->
 <h2>5. Select Item</h2>
@@ -36,55 +48,88 @@
 </select>
 <pre id="out_pick"></pre>
 
+<button onclick="showAPI_pick()">Show API</button>
+<pre id="api_pick"></pre>
+
 <!-- 6. Quiz Generator -->
 <h2>6. Quiz</h2>
 <button onclick="quiz()">New Question</button>
 <pre id="out_quiz"></pre>
+
+<button onclick="showAPI_quiz()">Show API</button>
+<pre id="api_quiz"></pre>
 
 <!-- 7. Product Catalog -->
 <h2>7. Products</h2>
 <button onclick="products()">Show</button>
 <pre id="out_products"></pre>
 
+<button onclick="showAPI_products()">Show API</button>
+<pre id="api_products"></pre>
+
 <!-- 8. Character Creator -->
 <h2>8. Character Creator</h2>
 <button onclick="char()">Generate</button>
 <pre id="out_char"></pre>
+
+<button onclick="showAPI_char()">Show API</button>
+<pre id="api_char"></pre>
 
 <!-- 9. Math Practice -->
 <h2>9. Math Problem</h2>
 <button onclick="math()">New Problem</button>
 <pre id="out_math"></pre>
 
+<button onclick="showAPI_math()">Show API</button>
+<pre id="api_math"></pre>
+
 <!-- 10. Weather Simulator -->
 <h2>10. Weather</h2>
 <button onclick="weather()">Random Weather</button>
 <pre id="out_weather"></pre>
+
+<button onclick="showAPI_weather()">Show API</button>
+<pre id="api_weather"></pre>
 
 <!-- 11. Animation -->
 <h2>11. Box Mover</h2>
 <button onclick="moveBox()">Move</button>
 <div id="box" style="width:50px;height:50px;background:gray;position:relative;"></div>
 
+<button onclick="showAPI_move()">Show API</button>
+<pre id="api_move"></pre>
+
 <!-- 12. Story Generator -->
 <h2>12. Story Generator</h2>
 <button onclick="story()">New Story</button>
 <pre id="out_story"></pre>
+
+<button onclick="showAPI_story()">Show API</button>
+<pre id="api_story"></pre>
 
 <!-- 13. Student Grades -->
 <h2>13. Students</h2>
 <button onclick="students()">Show</button>
 <pre id="out_students"></pre>
 
+<button onclick="showAPI_students()">Show API</button>
+<pre id="api_students"></pre>
+
 <!-- 14. Restaurant Menu -->
 <h2>14. Menu</h2>
 <button onclick="menu()">Show</button>
 <pre id="out_menu"></pre>
 
+<button onclick="showAPI_menu()">Show API</button>
+<pre id="api_menu"></pre>
+
 <!-- 15. Emoji -->
 <h2>15. Random Emoji</h2>
 <button onclick="emoji()">Random</button>
 <pre id="out_emoji"></pre>
+
+<button onclick="showAPI_emoji()">Show API</button>
+<pre id="api_emoji"></pre>
 
 <script>
 // 1
@@ -244,7 +289,29 @@ function emoji() {
   const data = { emoji: list[Math.floor(Math.random() * list.length)] };
   out_emoji.textContent = JSON.stringify(data, null, 2);
 }
+
+/* ---- API REVEAL FUNCTIONS ---- */
+
+function showAPI_basic(){ api_basic.textContent = basic.toString(); }
+function showAPI_img(){ api_img.textContent = jsonImg.toString(); }
+function showAPI_people(){ api_people.textContent = people.toString(); }
+function showAPI_player(){ api_player.textContent = player.toString(); }
+function showAPI_pick(){ api_pick.textContent = pick.toString(); }
+function showAPI_quiz(){ api_quiz.textContent = quiz.toString(); }
+function showAPI_products(){ api_products.textContent = products.toString(); }
+function showAPI_char(){ api_char.textContent = char.toString(); }
+function showAPI_math(){ api_math.textContent = math.toString(); }
+function showAPI_weather(){ api_weather.textContent = weather.toString(); }
+function showAPI_move(){ api_move.textContent = moveBox.toString(); }
+function showAPI_story(){ api_story.textContent = story.toString(); }
+function showAPI_students(){ api_students.textContent = students.toString(); }
+function showAPI_menu(){ api_menu.textContent = menu.toString(); }
+function showAPI_emoji(){ api_emoji.textContent = emoji.toString(); }
+
 </script>
+
+</body>
+</html>
 
 </body>
 </html>
