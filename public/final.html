@@ -33,9 +33,9 @@ function myHitOther(my1,my2){
 
 
 function myCheckHit(){
-   if ( myHitOther('myImg01','myImg02') ){
+   if ( myHitOther('ignore/pukeko.jpg','ignore/meowl.png') ){
        alert('you lose')  
-       document.getElementById('myImg01').style.left = '20px'
+       document.getElementById('ignore/pukeko.jpg').style.left = '20px'
        location = 't2a13-keydown.html'  // go to your next level
    }
 
@@ -65,6 +65,6 @@ function myCheckHit(){
 
 
 <input type=button value="Image Right Fast Button" onTouchStart="{this.click(); event.preventDefault();}" onclick="{
-  document.getElementById('myImg01').style.left = parseInt(document.getElementById('myImg01').style.left) + 10 + 'px'
+  document.getElementById('ignore/pukeko.jpg').style.left = parseInt(document.getElementById('ignore/pukeko.jpg').style.left) + 10 + 'px'
   myCheckHit()     // checks for all collisions
 }"><br><br>
