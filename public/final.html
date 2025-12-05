@@ -1,69 +1,200 @@
+<!DOCTYPE html>
+<html>
+<head>
+<title>School Project Game</title>
 
-<h6> Version 0.0.2 </h6>
+<style>
+    body {
+        margin: 0;
+        overflow: hidden;
+        background: url("https://i.imgur.com/BZ7PFlM.png");
+        background-size: 600px;
+        background-repeat: repeat-x;
+    }
+    #player, .enemy, .coin {
+        position: absolute;
+    }
 
-<body id="myBody" style="background-repeat:repeat; background-size: 80%" background="myBackground01.jpg">
+    #ui {
+        position: absolute;
+        top: 10px;
+        left: 10px;
+        color: white;
+        font-family: Arial;
+        font-size: 22px;
+        text-shadow: 2px 2px 2px black;
+    }
 
-<h1 align=center>t2a25-game-template-fred.html</h1>
-<br><br><br><br>
+    #gameOverScreen {
+        position: absolute;
+        top: 0; left: 0;
+        width: 100vw;
+        height: 100vh;
+        background: rgba(0,0,0,0.8);
+        color: white;
+        font-family: Arial;
+        font-size: 50px;
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        display: none;
+        flex-direction: column;
+    }
+
+    button {
+        font-size: 20px;
+        margin-top: 20px;
+        padding: 10px 20px;
+    }
+</style>
+</head>
+
+<body id="myBody">
+
+<div id="ui">Health: <span id="hp">100</span> | Coins: <span id="coins">0</span>/5</div>
+
+<div id="gameOverScreen">
+    <div id="gameOverText"></div>
+    <button onclick="restartGame()">Play Again</button>
+</div>
+
+<!-- PLAYER -->
+<img id="player" src="https://i.imgur.com/3WbRZFm.png" 
+     style="width:60px;height:60px;left:100px;top:300px;">
+
+<!-- ENEMIES -->
+<img class="enemy" id="enemy1" src="https://i.imgur.com/0Z8M9Up.png" style="width:60px;height:60px;left:700px;top:100px;">
+<img class="enemy" id="enemy2" src="https://i.imgur.com/0Z8M9Up.png" style="width:60px;height:60px;left:900px;top:400px;">
+
+<!-- COINS -->
+<img class="coin" id="coin1" src="https://i.imgur.com/7y7rx3I.png" style="width:40px;height:40px;left:600px;top:200px;">
+<img class="coin" id="coin2" src="https://i.imgur.com/7y7rx3I.png" style="width:40px;height:40px;left:1000px;top:300px;">
+<img class="coin" id="coin3" src="https://i.imgur.com/7y7rx3I.png" style="width:40px;height:40px;left:1400px;top:350px;">
+<img class="coin" id="coin4" src="https://i.imgur.com/7y7rx3I.png" style="width:40px;height:40px;left:1800px;top:150px;">
+<img class="coin" id="coin5" src="https://i.imgur.com/7y7rx3I.png" style="width:40px;height:40px;left:2200px;top:300px;">
 
 <script>
 
-   // global variables here
-   let myGlobalX = 0
-   let myClock
+// GAME VARIABLES
+let player = document.getElementById("player");
+let hp = 100;
+let coins = 0;
+let keys = {};
 
+let scrollX = 0;
+let speed = 6;
 
-function myHitOther(my1,my2){
-   let left1   = parseInt(document.getElementById(my1).style.left)
-   let right1  = left1 + parseInt(document.getElementById(my1).style.width)
-   let top1    = parseInt(document.getElementById(my1).style.top)   
-   let bottom1 = top1   + parseInt(document.getElementById(my1).style.height)
+// PLAYER INPUT
+document.addEventListener("keydown", e => keys[e.key] = true);
+document.addEventListener("keyup", e => keys[e.key] = false);
 
-   let left2   = parseInt(document.getElementById(my2).style.left)
-   let right2  = left2 + parseInt(document.getElementById(my2).style.width)
-   let top2    = parseInt(document.getElementById(my2).style.top)   
-   let bottom2 = top2   + parseInt(document.getElementById(my2).style.height)
-
-   if ((right1  >=  left2) &&
-       (bottom1 >=  top2) &&
-       (left1   <=  right2) &&
-       (top1    <=  bottom2)){
-       return true
-   }
-   return false
+// COLLISION CHECK
+function hit(a, b) {
+    let A = a.getBoundingClientRect();
+    let B = b.getBoundingClientRect();
+    return !(A.right < B.left || A.left > B.right || A.bottom < B.top || A.top > B.bottom);
 }
 
+// GAME LOOP
+function gameLoop() {
 
-function myCheckHit(){
+    // MOVE PLAYER
+    if (keys["w"]) player.style.top = parseInt(player.style.top) - speed + "px";
+    if (keys["s"]) player.style.top = parseInt(player.style.top) + speed + "px";
+    if (keys["a"]) scrollX += speed;  // world scrolls instead
+    if (keys["d"]) scrollX -= speed;
 
-   // Check collision between the two images you actually have
-   if ( myHitOther('myImg01','myImg02') ){
-       alert('You lose!')
-       document.getElementById('myImg01').style.left = '20px'
-       // location = 't2a13-keydown.html'   // enable if needed
-   }
+    document.body.style.backgroundPosition = scrollX + "px 0px";
 
+    // MOVE ALL OBJECTS RELATIVE TO WORLD
+    moveWorldObjects();
+
+    // ENEMY AI
+    enemyAI();
+
+    // CHECK COLLISIONS
+    checkCoins();
+    checkEnemyHits();
+
+    requestAnimationFrame(gameLoop);
 }
+
+// MOVE ENEMIES + COINS WITH THE WORLD
+function moveWorldObjects() {
+    let movers = document.querySelectorAll(".enemy, .coin");
+
+    movers.forEach(m => {
+        let currentX = parseInt(m.style.left);
+        m.style.left = (currentX + (keys["a"] ? speed : 0) - (keys["d"] ? speed : 0)) + "px";
+    });
+}
+
+// ENEMY AI (CHASE PLAYER)
+function enemyAI() {
+    let enemies = document.querySelectorAll(".enemy");
+
+    enemies.forEach(enemy => {
+        let ex = parseInt(enemy.style.left);
+        let ey = parseInt(enemy.style.top);
+        let px = parseInt(player.style.left);
+        let py = parseInt(player.style.top);
+
+        if (px > ex) enemy.style.left = ex + 2 + "px";
+        if (px < ex) enemy.style.left = ex - 2 + "px";
+        if (py > ey) enemy.style.top = ey + 2 + "px";
+        if (py < ey) enemy.style.top = ey - 2 + "px";
+    });
+}
+
+// COIN COLLECTION
+function checkCoins() {
+    let coinElems = document.querySelectorAll(".coin");
+
+    coinElems.forEach(c => {
+        if (c.style.display !== "none" && hit(player, c)) {
+            c.style.display = "none";
+            coins++;
+            document.getElementById("coins").innerHTML = coins;
+
+            if (coins === 5) winGame();
+        }
+    });
+}
+
+// ENEMY DAMAGE
+function checkEnemyHits() {
+    let enemies = document.querySelectorAll(".enemy");
+
+    enemies.forEach(enemy => {
+        if (hit(player, enemy)) {
+            hp -= 1;
+            document.getElementById("hp").innerHTML = hp;
+
+            if (hp <= 0) loseGame();
+        }
+    });
+}
+
+// GAME OVER
+function loseGame() {
+    document.getElementById("gameOverText").innerHTML = "YOU LOSE!";
+    document.getElementById("gameOverScreen").style.display = "flex";
+}
+
+// WINNING SCREEN
+function winGame() {
+    document.getElementById("gameOverText").innerHTML = "YOU WIN!";
+    document.getElementById("gameOverScreen").style.display = "flex";
+}
+
+// RESTART BUTTON
+function restartGame() {
+    location.reload();
+}
+
+gameLoop();
 
 </script>
 
-<!-- These IDs are valid now -->
-<img id="myImg01" style="position:absolute; width:100px; height:80px; top:0px; left:50px;"  src="myImage01.jpg">
-<img id="myImg02" style="position:absolute; width:100px; height:80px; top:0px; left:250px;" src="myImage02.jpg">
-
-<input type=button value="Auto Background Left" onclick="{
-  clearInterval(myClock)
-  let myTemp = '100px 0px'
-  myClock = setInterval(function(){
-      myGlobalX -= 5
-      myTemp =  myGlobalX + 'px 0px'
-      document.getElementById('myBody').style.backgroundPosition = myTemp
-  }, 100)
-}">
-
-
-<input type=button value="Image Right Fast Button" onTouchStart="{this.click(); event.preventDefault();}" onclick="{
-  document.getElementById('myImg01').style.left = 
-        parseInt(document.getElementById('myImg01').style.left) + 10 + 'px'
-  myCheckHit()
-}"><br><br>
+</body>
+</html>
