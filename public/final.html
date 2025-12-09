@@ -1,35 +1,19 @@
-<!DOCTYPE html>
-<html>
-<head>
-<title>Pedro-Style Shooter</title>
-<style>
-    body { margin:0; overflow:hidden; background:#111; }
-    canvas { background:#222; display:block; margin:0 auto; }
-</style>
-</head>
-<body>
-<canvas id="game"></canvas>
-
 <script>
-// -------------------------------------------
-// BASIC SETUP
-// -------------------------------------------
+// ============================================================
+//  BETTER PEDRO-STYLE GAME
+// ============================================================
 const canvas = document.getElementById("game");
 const ctx = canvas.getContext("2d");
-
 canvas.width = 1000;
 canvas.height = 550;
 
 let last = 0;
-let slowMo = false;
 let timeScale = 1;
 
-// INPUT
 const keys = {};
 window.addEventListener("keydown", e => keys[e.key] = true);
 window.addEventListener("keyup",   e => keys[e.key] = false);
 
-// mouse
 let mouse = {x:0, y:0, down:false};
 canvas.addEventListener("mousemove", e=>{
     const r = canvas.getBoundingClientRect();
@@ -39,165 +23,217 @@ canvas.addEventListener("mousemove", e=>{
 canvas.addEventListener("mousedown", ()=> mouse.down = true);
 canvas.addEventListener("mouseup",   ()=> mouse.down = false);
 
-// -------------------------------------------
-// PLAYER
-// -------------------------------------------
+// ============================================================
+//  PLAYER
+// ============================================================
 const player = {
     x:100, y:300,
     vx:0, vy:0,
     w:40, h:60,
-    speed:5,
-    jump:-13,
+    speed:6,
+    jump:-15,
     onGround:false,
-    onWall:false,
-    wallDir:0,
+    spin:false,
     angle:0,
-    spin:false
+    coyote:0,
+    shootTimer:0,
+    knockback:0
 };
 
-// -------------------------------------------
-// ENEMY
-// -------------------------------------------
-const enemy = { x:700, y:330, w:40, h:60, hp:3, alive:true };
+// ============================================================
+//  ENEMY
+// ============================================================
+const enemies = [
+    { x:700, y:330, w:40, h:60, hp:3, alive:true, deathT:0 }
+];
 
-// -------------------------------------------
-// BULLETS
-// -------------------------------------------
+// ============================================================
+//  BULLETS
+// ============================================================
 const bullets = [];
 
-function spawnBullet(originX, originY, angle) {
+function spawnBullet(x, y, ang) {
     bullets.push({
-        x:originX,
-        y:originY,
-        vx:Math.cos(angle)*14,
-        vy:Math.sin(angle)*14,
-        life:60
+        x, y,
+        vx:Math.cos(ang)*16,
+        vy:Math.sin(ang)*16,
+        life:70,
+        trail:[]
     });
 }
 
-// -------------------------------------------
-// FRYING PANS (ricochet surfaces)
-// -------------------------------------------
+// frying pans
 const pans = [
-    {x:400, y:380, r:30},
-    {x:550, y:260, r:30}
+    {x:400, y:380, r:35},
+    {x:550, y:260, r:35}
 ];
 
-// -------------------------------------------
-// UPDATE
-// -------------------------------------------
-function update(dt) {
-    // slow motion toggle
-    slowMo = keys["Shift"];
-    timeScale = slowMo ? 0.25 : 1;
+// camera shake
+let shake = 0;
 
-    // horizontal movement
-    if (keys["a"]) player.vx = -player.speed;
-    else if (keys["d"]) player.vx = player.speed;
-    else player.vx = 0;
+// ============================================================
+// UPDATE
+// ============================================================
+function update(dt) {
+    timeScale = keys["Shift"] ? 0.25 : 1;
+
+    // -----------------------------------------------------------------
+    // MOVEMENT
+    // -----------------------------------------------------------------
+    let dir = (keys["a"]?-1:0) + (keys["d"]?1:0);
+    player.vx = dir * player.speed;
 
     // gravity
-    player.vy += 0.7;
+    player.vy += 0.8;
 
-    // apply motion
-    player.x += player.vx * dt;
+    // coyote time (for forgiving jumps)
+    if (player.onGround) player.coyote = 10;
+    else if (player.coyote > 0) player.coyote--;
+
+    // jump
+    if (keys[" "] && player.coyote > 0) {
+        player.vy = player.jump;
+        player.coyote = 0;
+        player.spin = true;
+        shake = 8;
+    }
+
+    // apply movement
+    player.x += (player.vx + player.knockback) * dt;
     player.y += player.vy * dt;
 
+    // knockback fades
+    player.knockback *= 0.85;
+
     // ground
+    player.onGround = false;
     if (player.y + player.h > canvas.height - 20) {
         player.y = canvas.height - 20 - player.h;
         player.vy = 0;
         player.onGround = true;
         player.spin = false;
-    } else {
-        player.onGround = false;
     }
 
-    // wall detection (walls on left & right screen edges)
-    player.onWall = false;
-    if (player.x <= 0) {
-        player.x = 0; player.onWall = true; player.wallDir = -1;
-    }
-    if (player.x + player.w >= canvas.width) {
-        player.x = canvas.width - player.w;
-        player.onWall = true; player.wallDir = 1;
-    }
+    // walls
+    if (player.x < 0) player.x = 0;
+    if (player.x + player.w > canvas.width) player.x = canvas.width - player.w;
 
-    // jump or wall jump
-    if (keys[" "] ) {
-        if (player.onGround) {
-            player.vy = player.jump;
-            player.spin = true;
-        } else if (player.onWall) {
-            player.vy = player.jump;
-            player.vx = -player.wallDir * 10;  // bounce off wall
-            player.spin = true;
-        }
-    }
+    // spin animation
+    if (player.spin) player.angle += 0.4 * dt;
+    else player.angle *= 0.8;
 
-    // mid-air spinning
-    if (player.spin) player.angle += 0.35 * dt;
+    // -----------------------------------------------------------------
+    // SHOOTING (with fire rate)
+    // -----------------------------------------------------------------
+    player.shootTimer -= dt;
+    if (mouse.down && player.shootTimer <= 0) {
+        player.shootTimer = 4; // fire delay
 
-    // shooting
-    if (mouse.down) {
         const px = player.x + player.w/2;
         const py = player.y + player.h/2;
         const aim = Math.atan2(mouse.y - py, mouse.x - px);
 
-        // dual pistols – offset slightly up/down
-        const offset = 12;
-        spawnBullet(px, py - offset, aim);
-        spawnBullet(px, py + offset, aim);
+        spawnBullet(px, py - 10, aim);
+        spawnBullet(px, py + 10, aim);
+
+        shake = 5;
     }
 
-    // update bullets
+    // -----------------------------------------------------------------
+    // BULLET PHYSICS + RICOCHET
+    // -----------------------------------------------------------------
     bullets.forEach(b=>{
+        // store trail
+        b.trail.push({x:b.x, y:b.y});
+        if (b.trail.length > 6) b.trail.shift();
+
         b.x += b.vx * dt;
         b.y += b.vy * dt;
         b.life--;
 
-        // enemy hit
-        if (enemy.alive &&
-            b.x > enemy.x && b.x < enemy.x + enemy.w &&
-            b.y > enemy.y && b.y < enemy.y + enemy.h) {
-            enemy.hp--;
-            b.life = 0;
-            if (enemy.hp <= 0) enemy.alive = false;
-        }
-
-        // pan ricochet
+        // ricochet on pans
         for (let p of pans) {
             const dx = b.x - p.x;
             const dy = b.y - p.y;
-            const dist = Math.sqrt(dx*dx + dy*dy);
+            const dist = Math.hypot(dx, dy);
             if (dist < p.r) {
-                // reflect velocity
                 const nx = dx / dist;
                 const ny = dy / dist;
                 const dot = b.vx*nx + b.vy*ny;
                 b.vx -= 2 * dot * nx;
                 b.vy -= 2 * dot * ny;
-                b.life += 20; // extra life after bounce
+                b.life += 25;
+                shake = 10;
+            }
+        }
+
+        // enemy hit
+        for (let en of enemies) {
+            if (!en.alive) continue;
+            if (b.x > en.x && b.x < en.x+en.w &&
+                b.y > en.y && b.y < en.y+en.h) {
+
+                en.hp--;
+                b.life = 0;
+                player.knockback = -Math.cos(Math.atan2(mouse.y - py, mouse.x - px)) * 3;
+
+                if (en.hp <= 0) {
+                    en.alive = false;
+                    en.deathT = 40;
+                    shake = 12;
+                }
             }
         }
     });
 
-    // remove dead bullets
-    for (let i = bullets.length - 1; i >= 0; i--)
+    // cleanup
+    for (let i=bullets.length-1; i>=0; i--)
         if (bullets[i].life <= 0) bullets.splice(i,1);
+
+    // enemy death animation
+    enemies.forEach(e=>{
+        if (!e.alive && e.deathT > 0) e.deathT--;
+    });
 }
 
-// -------------------------------------------
+// ============================================================
 // DRAW
-// -------------------------------------------
+// ============================================================
 function draw() {
     ctx.clearRect(0,0,canvas.width,canvas.height);
 
-    // slow motion tint
-    if (slowMo) {
-        ctx.fillStyle = "rgba(0,255,255,0.15)";
+    // camera shake
+    if (shake > 0) shake -= 0.8;
+    ctx.save();
+    ctx.translate((Math.random()-0.5)*shake, (Math.random()-0.5)*shake);
+
+    // tint for slow-mo
+    if (timeScale < 1) {
+        ctx.fillStyle = "rgba(0,255,255,0.12)";
         ctx.fillRect(0,0,canvas.width,canvas.height);
     }
+
+    // pans
+    ctx.fillStyle = "#ccc";
+    for (let p of pans) {
+        ctx.beginPath();
+        ctx.arc(p.x, p.y, p.r, 0, Math.PI*2);
+        ctx.fill();
+    }
+
+    // bullets + trails
+    bullets.forEach(b=>{
+        ctx.strokeStyle = "rgba(255,255,255,0.5)";
+        ctx.beginPath();
+        for (let i=0;i<b.trail.length;i++){
+            const t = b.trail[i];
+            ctx.lineTo(t.x, t.y);
+        }
+        ctx.stroke();
+
+        ctx.fillStyle = "#fff";
+        ctx.fillRect(b.x, b.y, 4, 2);
+    });
 
     // player
     ctx.save();
@@ -207,42 +243,31 @@ function draw() {
     ctx.fillRect(-player.w/2, -player.h/2, player.w, player.h);
     ctx.restore();
 
-    // enemy
-    if (enemy.alive) {
-        ctx.fillStyle = "#ff3333";
-        ctx.fillRect(enemy.x, enemy.y, enemy.w, enemy.h);
-    }
-
-    // pans
-    ctx.fillStyle = "#bbb";
-    for (let p of pans) {
-        ctx.beginPath();
-        ctx.arc(p.x, p.y, p.r, 0, Math.PI*2);
-        ctx.fill();
-        ctx.strokeStyle="#666";
-        ctx.stroke();
-    }
-
-    // bullets
-    ctx.fillStyle = "#fff";
-    bullets.forEach(b => {
-        ctx.fillRect(b.x, b.y, 4, 2);
+    // enemies
+    enemies.forEach(e=>{
+        if (e.alive) {
+            ctx.fillStyle = "#ff3333";
+            ctx.fillRect(e.x, e.y, e.w, e.h);
+        } else if (e.deathT > 0) {
+            ctx.fillStyle = `rgba(255,0,0,${e.deathT/40})`;
+            ctx.fillRect(e.x, e.y, e.w, e.h);
+        }
     });
+
+    ctx.restore();
 }
 
-// -------------------------------------------
-// GAME LOOP
-// -------------------------------------------
+// ============================================================
+// LOOP
+// ============================================================
 function loop(t) {
-    const dt = ((t - last)/16.67) * timeScale;
+    const dt = ((t-last)/16.67) * timeScale;
     last = t;
 
     update(dt);
     draw();
+
     requestAnimationFrame(loop);
 }
 requestAnimationFrame(loop);
-
 </script>
-</body>
-</html>
