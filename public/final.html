@@ -1,200 +1,248 @@
 <!DOCTYPE html>
 <html>
 <head>
-<title>School Project Game</title>
-
+<title>Pedro-Style Shooter</title>
 <style>
-    body {
-        margin: 0;
-        overflow: hidden;
-        background: url("https://i.imgur.com/BZ7PFlM.png");
-        background-size: 600px;
-        background-repeat: repeat-x;
-    }
-    #player, .enemy, .coin {
-        position: absolute;
-    }
-
-    #ui {
-        position: absolute;
-        top: 10px;
-        left: 10px;
-        color: white;
-        font-family: Arial;
-        font-size: 22px;
-        text-shadow: 2px 2px 2px black;
-    }
-
-    #gameOverScreen {
-        position: absolute;
-        top: 0; left: 0;
-        width: 100vw;
-        height: 100vh;
-        background: rgba(0,0,0,0.8);
-        color: white;
-        font-family: Arial;
-        font-size: 50px;
-        display: flex;
-        justify-content: center;
-        align-items: center;
-        display: none;
-        flex-direction: column;
-    }
-
-    button {
-        font-size: 20px;
-        margin-top: 20px;
-        padding: 10px 20px;
-    }
+    body { margin:0; overflow:hidden; background:#111; }
+    canvas { background:#222; display:block; margin:0 auto; }
 </style>
 </head>
-
-<body id="myBody">
-
-<div id="ui">Health: <span id="hp">100</span> | Coins: <span id="coins">0</span>/5</div>
-
-<div id="gameOverScreen">
-    <div id="gameOverText"></div>
-    <button onclick="restartGame()">Play Again</button>
-</div>
-
-<!-- PLAYER -->
-<img id="player" src="https://i.imgur.com/3WbRZFm.png" 
-     style="width:60px;height:60px;left:100px;top:300px;">
-
-<!-- ENEMIES -->
-<img class="enemy" id="enemy1" src="https://i.imgur.com/0Z8M9Up.png" style="width:60px;height:60px;left:700px;top:100px;">
-<img class="enemy" id="enemy2" src="https://i.imgur.com/0Z8M9Up.png" style="width:60px;height:60px;left:900px;top:400px;">
-
-<!-- COINS -->
-<img class="coin" id="coin1" src="https://i.imgur.com/7y7rx3I.png" style="width:40px;height:40px;left:600px;top:200px;">
-<img class="coin" id="coin2" src="https://i.imgur.com/7y7rx3I.png" style="width:40px;height:40px;left:1000px;top:300px;">
-<img class="coin" id="coin3" src="https://i.imgur.com/7y7rx3I.png" style="width:40px;height:40px;left:1400px;top:350px;">
-<img class="coin" id="coin4" src="https://i.imgur.com/7y7rx3I.png" style="width:40px;height:40px;left:1800px;top:150px;">
-<img class="coin" id="coin5" src="https://i.imgur.com/7y7rx3I.png" style="width:40px;height:40px;left:2200px;top:300px;">
+<body>
+<canvas id="game"></canvas>
 
 <script>
+// -------------------------------------------
+// BASIC SETUP
+// -------------------------------------------
+const canvas = document.getElementById("game");
+const ctx = canvas.getContext("2d");
 
-// GAME VARIABLES
-let player = document.getElementById("player");
-let hp = 100;
-let coins = 0;
-let keys = {};
+canvas.width = 1000;
+canvas.height = 550;
 
-let scrollX = 0;
-let speed = 6;
+let last = 0;
+let slowMo = false;
+let timeScale = 1;
 
-// PLAYER INPUT
-document.addEventListener("keydown", e => keys[e.key] = true);
-document.addEventListener("keyup", e => keys[e.key] = false);
+// INPUT
+const keys = {};
+window.addEventListener("keydown", e => keys[e.key] = true);
+window.addEventListener("keyup",   e => keys[e.key] = false);
 
-// COLLISION CHECK
-function hit(a, b) {
-    let A = a.getBoundingClientRect();
-    let B = b.getBoundingClientRect();
-    return !(A.right < B.left || A.left > B.right || A.bottom < B.top || A.top > B.bottom);
+// mouse
+let mouse = {x:0, y:0, down:false};
+canvas.addEventListener("mousemove", e=>{
+    const r = canvas.getBoundingClientRect();
+    mouse.x = e.clientX - r.left;
+    mouse.y = e.clientY - r.top;
+});
+canvas.addEventListener("mousedown", ()=> mouse.down = true);
+canvas.addEventListener("mouseup",   ()=> mouse.down = false);
+
+// -------------------------------------------
+// PLAYER
+// -------------------------------------------
+const player = {
+    x:100, y:300,
+    vx:0, vy:0,
+    w:40, h:60,
+    speed:5,
+    jump:-13,
+    onGround:false,
+    onWall:false,
+    wallDir:0,
+    angle:0,
+    spin:false
+};
+
+// -------------------------------------------
+// ENEMY
+// -------------------------------------------
+const enemy = { x:700, y:330, w:40, h:60, hp:3, alive:true };
+
+// -------------------------------------------
+// BULLETS
+// -------------------------------------------
+const bullets = [];
+
+function spawnBullet(originX, originY, angle) {
+    bullets.push({
+        x:originX,
+        y:originY,
+        vx:Math.cos(angle)*14,
+        vy:Math.sin(angle)*14,
+        life:60
+    });
 }
 
+// -------------------------------------------
+// FRYING PANS (ricochet surfaces)
+// -------------------------------------------
+const pans = [
+    {x:400, y:380, r:30},
+    {x:550, y:260, r:30}
+];
+
+// -------------------------------------------
+// UPDATE
+// -------------------------------------------
+function update(dt) {
+    // slow motion toggle
+    slowMo = keys["Shift"];
+    timeScale = slowMo ? 0.25 : 1;
+
+    // horizontal movement
+    if (keys["a"]) player.vx = -player.speed;
+    else if (keys["d"]) player.vx = player.speed;
+    else player.vx = 0;
+
+    // gravity
+    player.vy += 0.7;
+
+    // apply motion
+    player.x += player.vx * dt;
+    player.y += player.vy * dt;
+
+    // ground
+    if (player.y + player.h > canvas.height - 20) {
+        player.y = canvas.height - 20 - player.h;
+        player.vy = 0;
+        player.onGround = true;
+        player.spin = false;
+    } else {
+        player.onGround = false;
+    }
+
+    // wall detection (walls on left & right screen edges)
+    player.onWall = false;
+    if (player.x <= 0) {
+        player.x = 0; player.onWall = true; player.wallDir = -1;
+    }
+    if (player.x + player.w >= canvas.width) {
+        player.x = canvas.width - player.w;
+        player.onWall = true; player.wallDir = 1;
+    }
+
+    // jump or wall jump
+    if (keys[" "] ) {
+        if (player.onGround) {
+            player.vy = player.jump;
+            player.spin = true;
+        } else if (player.onWall) {
+            player.vy = player.jump;
+            player.vx = -player.wallDir * 10;  // bounce off wall
+            player.spin = true;
+        }
+    }
+
+    // mid-air spinning
+    if (player.spin) player.angle += 0.35 * dt;
+
+    // shooting
+    if (mouse.down) {
+        const px = player.x + player.w/2;
+        const py = player.y + player.h/2;
+        const aim = Math.atan2(mouse.y - py, mouse.x - px);
+
+        // dual pistols – offset slightly up/down
+        const offset = 12;
+        spawnBullet(px, py - offset, aim);
+        spawnBullet(px, py + offset, aim);
+    }
+
+    // update bullets
+    bullets.forEach(b=>{
+        b.x += b.vx * dt;
+        b.y += b.vy * dt;
+        b.life--;
+
+        // enemy hit
+        if (enemy.alive &&
+            b.x > enemy.x && b.x < enemy.x + enemy.w &&
+            b.y > enemy.y && b.y < enemy.y + enemy.h) {
+            enemy.hp--;
+            b.life = 0;
+            if (enemy.hp <= 0) enemy.alive = false;
+        }
+
+        // pan ricochet
+        for (let p of pans) {
+            const dx = b.x - p.x;
+            const dy = b.y - p.y;
+            const dist = Math.sqrt(dx*dx + dy*dy);
+            if (dist < p.r) {
+                // reflect velocity
+                const nx = dx / dist;
+                const ny = dy / dist;
+                const dot = b.vx*nx + b.vy*ny;
+                b.vx -= 2 * dot * nx;
+                b.vy -= 2 * dot * ny;
+                b.life += 20; // extra life after bounce
+            }
+        }
+    });
+
+    // remove dead bullets
+    for (let i = bullets.length - 1; i >= 0; i--)
+        if (bullets[i].life <= 0) bullets.splice(i,1);
+}
+
+// -------------------------------------------
+// DRAW
+// -------------------------------------------
+function draw() {
+    ctx.clearRect(0,0,canvas.width,canvas.height);
+
+    // slow motion tint
+    if (slowMo) {
+        ctx.fillStyle = "rgba(0,255,255,0.15)";
+        ctx.fillRect(0,0,canvas.width,canvas.height);
+    }
+
+    // player
+    ctx.save();
+    ctx.translate(player.x + player.w/2, player.y + player.h/2);
+    ctx.rotate(player.angle);
+    ctx.fillStyle = "#ffd800";
+    ctx.fillRect(-player.w/2, -player.h/2, player.w, player.h);
+    ctx.restore();
+
+    // enemy
+    if (enemy.alive) {
+        ctx.fillStyle = "#ff3333";
+        ctx.fillRect(enemy.x, enemy.y, enemy.w, enemy.h);
+    }
+
+    // pans
+    ctx.fillStyle = "#bbb";
+    for (let p of pans) {
+        ctx.beginPath();
+        ctx.arc(p.x, p.y, p.r, 0, Math.PI*2);
+        ctx.fill();
+        ctx.strokeStyle="#666";
+        ctx.stroke();
+    }
+
+    // bullets
+    ctx.fillStyle = "#fff";
+    bullets.forEach(b => {
+        ctx.fillRect(b.x, b.y, 4, 2);
+    });
+}
+
+// -------------------------------------------
 // GAME LOOP
-function gameLoop() {
+// -------------------------------------------
+function loop(t) {
+    const dt = ((t - last)/16.67) * timeScale;
+    last = t;
 
-    // MOVE PLAYER
-    if (keys["w"]) player.style.top = parseInt(player.style.top) - speed + "px";
-    if (keys["s"]) player.style.top = parseInt(player.style.top) + speed + "px";
-    if (keys["a"]) scrollX += speed;  // world scrolls instead
-    if (keys["d"]) scrollX -= speed;
-
-    document.body.style.backgroundPosition = scrollX + "px 0px";
-
-    // MOVE ALL OBJECTS RELATIVE TO WORLD
-    moveWorldObjects();
-
-    // ENEMY AI
-    enemyAI();
-
-    // CHECK COLLISIONS
-    checkCoins();
-    checkEnemyHits();
-
-    requestAnimationFrame(gameLoop);
+    update(dt);
+    draw();
+    requestAnimationFrame(loop);
 }
-
-// MOVE ENEMIES + COINS WITH THE WORLD
-function moveWorldObjects() {
-    let movers = document.querySelectorAll(".enemy, .coin");
-
-    movers.forEach(m => {
-        let currentX = parseInt(m.style.left);
-        m.style.left = (currentX + (keys["a"] ? speed : 0) - (keys["d"] ? speed : 0)) + "px";
-    });
-}
-
-// ENEMY AI (CHASE PLAYER)
-function enemyAI() {
-    let enemies = document.querySelectorAll(".enemy");
-
-    enemies.forEach(enemy => {
-        let ex = parseInt(enemy.style.left);
-        let ey = parseInt(enemy.style.top);
-        let px = parseInt(player.style.left);
-        let py = parseInt(player.style.top);
-
-        if (px > ex) enemy.style.left = ex + 2 + "px";
-        if (px < ex) enemy.style.left = ex - 2 + "px";
-        if (py > ey) enemy.style.top = ey + 2 + "px";
-        if (py < ey) enemy.style.top = ey - 2 + "px";
-    });
-}
-
-// COIN COLLECTION
-function checkCoins() {
-    let coinElems = document.querySelectorAll(".coin");
-
-    coinElems.forEach(c => {
-        if (c.style.display !== "none" && hit(player, c)) {
-            c.style.display = "none";
-            coins++;
-            document.getElementById("coins").innerHTML = coins;
-
-            if (coins === 5) winGame();
-        }
-    });
-}
-
-// ENEMY DAMAGE
-function checkEnemyHits() {
-    let enemies = document.querySelectorAll(".enemy");
-
-    enemies.forEach(enemy => {
-        if (hit(player, enemy)) {
-            hp -= 1;
-            document.getElementById("hp").innerHTML = hp;
-
-            if (hp <= 0) loseGame();
-        }
-    });
-}
-
-// GAME OVER
-function loseGame() {
-    document.getElementById("gameOverText").innerHTML = "YOU LOSE!";
-    document.getElementById("gameOverScreen").style.display = "flex";
-}
-
-// WINNING SCREEN
-function winGame() {
-    document.getElementById("gameOverText").innerHTML = "YOU WIN!";
-    document.getElementById("gameOverScreen").style.display = "flex";
-}
-
-// RESTART BUTTON
-function restartGame() {
-    location.reload();
-}
-
-gameLoop();
+requestAnimationFrame(loop);
 
 </script>
-
 </body>
 </html>
