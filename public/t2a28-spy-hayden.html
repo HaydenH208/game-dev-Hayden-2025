@@ -1,0 +1,143 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8" />
+    <title>Message Encryption / Decryption</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 40px;
+            max-width: 700px;
+        }
+        textarea {
+            width: 100%;
+            height: 120px;
+            margin-bottom: 10px;
+            font-size: 15px;
+        }
+        input {
+            width: 100%;
+            margin-bottom: 10px;
+            padding: 6px;
+            font-size: 15px;
+        }
+        button {
+            padding: 10px 15px;
+            font-size: 15px;
+            cursor: pointer;
+        }
+        .section {
+            border: 1px solid #ccc;
+            padding: 20px;
+            margin-bottom: 40px;
+            border-radius: 6px;
+            background: #fafafa;
+        }
+    </style>
+</head>
+<body>
+
+<h1>🔐 Message Encryption / Decryption</h1>
+
+<div class="section">
+    <h2>Encrypt Message</h2>
+    <textarea id="encryptInput" placeholder="Enter text to encrypt..."></textarea>
+    <input id="encryptPassword" type="password" placeholder="Password">
+    <button onclick="encryptMessage()">Encrypt</button>
+    <textarea id="encryptOutput" placeholder="Encrypted text appears here..." readonly></textarea>
+</div>
+
+<div class="section">
+    <h2>Decrypt Message</h2>
+    <textarea id="decryptInput" placeholder="Paste encrypted text here..."></textarea>
+    <input id="decryptPassword" type="password" placeholder="Password">
+    <button onclick="decryptMessage()">Decrypt</button>
+    <textarea id="decryptOutput" placeholder="Decrypted text appears here..." readonly></textarea>
+</div>
+
+<script>
+async function getKey(password, salt) {
+    const encoder = new TextEncoder();
+
+    const baseKey = await crypto.subtle.importKey(
+        "raw",
+        encoder.encode(password),
+        { name: "PBKDF2" },
+        false,
+        ["deriveKey"]
+    );
+
+    return crypto.subtle.deriveKey(
+        {
+            name: "PBKDF2",
+            salt: salt,
+            iterations: 100000,
+            hash: "SHA-256"
+        },
+        baseKey,
+        { name: "AES-GCM", length: 256 },
+        false,
+        ["encrypt", "decrypt"]
+    );
+}
+
+async function encryptMessage() {
+    const message = document.getElementById("encryptInput").value;
+    const password = document.getElementById("encryptPassword").value;
+    if (!message || !password) return alert("Enter message AND password.");
+
+    const encoder = new TextEncoder();
+    const data = encoder.encode(message);
+
+    const salt = crypto.getRandomValues(new Uint8Array(16));
+    const iv = crypto.getRandomValues(new Uint8Array(12));
+
+    const key = await getKey(password, salt);
+
+    const encrypted = await crypto.subtle.encrypt(
+        { name: "AES-GCM", iv: iv },
+        key,
+        data
+    );
+
+    const combined = new Uint8Array([
+        ...salt,
+        ...iv,
+        ...new Uint8Array(encrypted)
+    ]);
+
+    document.getElementById("encryptOutput").value =
+        btoa(String.fromCharCode(...combined));
+}
+
+async function decryptMessage() {
+    try {
+        const encryptedB64 = document.getElementById("decryptInput").value;
+        const password = document.getElementById("decryptPassword").value;
+        if (!encryptedB64 || !password) return alert("Enter encrypted text AND password.");
+
+        const encryptedData = Uint8Array.from(atob(encryptedB64), c => c.charCodeAt(0));
+
+        const salt = encryptedData.slice(0, 16);
+        const iv = encryptedData.slice(16, 28);
+        const ciphertext = encryptedData.slice(28);
+
+        const key = await getKey(password, salt);
+
+        const decrypted = await crypto.subtle.decrypt(
+            { name: "AES-GCM", iv: iv },
+            key,
+            ciphertext
+        );
+
+        const decoder = new TextDecoder();
+        document.getElementById("decryptOutput").value = decoder.decode(decrypted);
+
+    } catch (err) {
+        document.getElementById("decryptOutput").value = "❌ Incorrect password or corrupt data";
+    }
+}
+</script>
+
+</body>
+</html>
