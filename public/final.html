@@ -1,273 +1,541 @@
+<canvas id="game" width="1000" height="550"></canvas>
 <script>
-// ============================================================
-//  BETTER PEDRO-STYLE GAME
-// ============================================================
-const canvas = document.getElementById("game");
-const ctx = canvas.getContext("2d");
-canvas.width = 1000;
-canvas.height = 550;
+// ================================================================
+//  GAME ENGINE CORE
+// ================================================================
+class Game {
+    constructor(canvas) {
+        this.canvas = canvas;
+        this.ctx = canvas.getContext("2d");
+        this.last = 0;
+        this.timeScale = 1;
 
-let last = 0;
-let timeScale = 1;
+        this.input = new Input();
+        this.scene = new MainScene(this);
 
-const keys = {};
-window.addEventListener("keydown", e => keys[e.key] = true);
-window.addEventListener("keyup",   e => keys[e.key] = false);
+        requestAnimationFrame(this.loop.bind(this));
+    }
 
-let mouse = {x:0, y:0, down:false};
-canvas.addEventListener("mousemove", e=>{
-    const r = canvas.getBoundingClientRect();
-    mouse.x = e.clientX - r.left;
-    mouse.y = e.clientY - r.top;
-});
-canvas.addEventListener("mousedown", ()=> mouse.down = true);
-canvas.addEventListener("mouseup",   ()=> mouse.down = false);
+    loop(t) {
+        const dt = ((t - this.last) / 16.67) * this.timeScale;
+        this.last = t;
 
-// ============================================================
-//  PLAYER
-// ============================================================
-const player = {
-    x:100, y:300,
-    vx:0, vy:0,
-    w:40, h:60,
-    speed:6,
-    jump:-15,
-    onGround:false,
-    spin:false,
-    angle:0,
-    coyote:0,
-    shootTimer:0,
-    knockback:0
-};
+        this.scene.update(dt);
+        this.scene.draw(this.ctx);
 
-// ============================================================
-//  ENEMY
-// ============================================================
-const enemies = [
-    { x:700, y:330, w:40, h:60, hp:3, alive:true, deathT:0 }
-];
-
-// ============================================================
-//  BULLETS
-// ============================================================
-const bullets = [];
-
-function spawnBullet(x, y, ang) {
-    bullets.push({
-        x, y,
-        vx:Math.cos(ang)*16,
-        vy:Math.sin(ang)*16,
-        life:70,
-        trail:[]
-    });
+        requestAnimationFrame(this.loop.bind(this));
+    }
 }
 
-// frying pans
-const pans = [
-    {x:400, y:380, r:35},
-    {x:550, y:260, r:35}
-];
+// ================================================================
+//  INPUT
+// ================================================================
+class Input {
+    constructor() {
+        this.keys = {};
+        this.mouse = {x:0, y:0, down:false};
 
-// camera shake
-let shake = 0;
+        window.addEventListener("keydown", e => this.keys[e.key]=true);
+        window.addEventListener("keyup", e => this.keys[e.key]=false);
 
-// ============================================================
-// UPDATE
-// ============================================================
-function update(dt) {
-    timeScale = keys["Shift"] ? 0.25 : 1;
+        const c = document.getElementById("game");
+        c.addEventListener("mousemove", e=>{
+            const r=c.getBoundingClientRect();
+            this.mouse.x = e.clientX - r.left;
+            this.mouse.y = e.clientY - r.top;
+        });
+        c.addEventListener("mousedown",()=>this.mouse.down=true);
+        c.addEventListener("mouseup",()=>this.mouse.down=false);
 
-    // -----------------------------------------------------------------
-    // MOVEMENT
-    // -----------------------------------------------------------------
-    let dir = (keys["a"]?-1:0) + (keys["d"]?1:0);
-    player.vx = dir * player.speed;
-
-    // gravity
-    player.vy += 0.8;
-
-    // coyote time (for forgiving jumps)
-    if (player.onGround) player.coyote = 10;
-    else if (player.coyote > 0) player.coyote--;
-
-    // jump
-    if (keys[" "] && player.coyote > 0) {
-        player.vy = player.jump;
-        player.coyote = 0;
-        player.spin = true;
-        shake = 8;
+        this.tapTimes = {};
     }
 
-    // apply movement
-    player.x += (player.vx + player.knockback) * dt;
-    player.y += player.vy * dt;
+    key(k){ return !!this.keys[k]; }
 
-    // knockback fades
-    player.knockback *= 0.85;
+    registerTap(key){
+        const now=performance.now();
+        const last=this.tapTimes[key] || 0;
+        this.tapTimes[key]=now;
+        return (now-last < 250); // double-tap window
+    }
+}
 
-    // ground
-    player.onGround = false;
-    if (player.y + player.h > canvas.height - 20) {
-        player.y = canvas.height - 20 - player.h;
-        player.vy = 0;
-        player.onGround = true;
-        player.spin = false;
+// ================================================================
+//  UTILS
+// ================================================================
+function rectPoint(px,py,r){
+    return px>r.x && px<r.x+r.w && py>r.y && py<r.y+r.h;
+}
+function dist(a,b,c,d){ return Math.hypot(a-c,b-d); }
+function rand(a,b){ return a+Math.random()*(b-a); }
+
+// ================================================================
+//  CAMERA
+// ================================================================
+class Camera {
+    constructor(){ this.shake=0; }
+
+    addShake(s){ this.shake=Math.max(this.shake, s); }
+
+    apply(ctx){
+        if (this.shake>0){
+            ctx.translate((Math.random()-0.5)*this.shake, (Math.random()-0.5)*this.shake);
+            this.shake -= 0.7;
+        }
+    }
+}
+
+// ================================================================
+//  PARTICLE ENGINE
+// ================================================================
+class Particle {
+    constructor(x,y,vx,vy,size,color,life,fade){
+        this.x=x; this.y=y;
+        this.vx=vx; this.vy=vy;
+        this.size=size; 
+        this.color=color;
+        this.life=life;
+        this.fade=fade;
+        this.alpha=1;
+        this.rotation=Math.random()*Math.PI*2;
+        this.rotSpeed=rand(-0.1,0.1);
     }
 
-    // walls
-    if (player.x < 0) player.x = 0;
-    if (player.x + player.w > canvas.width) player.x = canvas.width - player.w;
+    update(dt){
+        this.x+=this.vx*dt;
+        this.y+=this.vy*dt;
+        this.vy+=0.1*dt;
 
-    // spin animation
-    if (player.spin) player.angle += 0.4 * dt;
-    else player.angle *= 0.8;
+        this.rotation+=this.rotSpeed*dt;
 
-    // -----------------------------------------------------------------
-    // SHOOTING (with fire rate)
-    // -----------------------------------------------------------------
-    player.shootTimer -= dt;
-    if (mouse.down && player.shootTimer <= 0) {
-        player.shootTimer = 4; // fire delay
-
-        const px = player.x + player.w/2;
-        const py = player.y + player.h/2;
-        const aim = Math.atan2(mouse.y - py, mouse.x - px);
-
-        spawnBullet(px, py - 10, aim);
-        spawnBullet(px, py + 10, aim);
-
-        shake = 5;
+        this.life--;
+        if (this.fade) this.alpha = this.life/this.fade;
+        if (this.alpha<0) this.alpha=0;
     }
 
-    // -----------------------------------------------------------------
-    // BULLET PHYSICS + RICOCHET
-    // -----------------------------------------------------------------
-    bullets.forEach(b=>{
-        // store trail
-        b.trail.push({x:b.x, y:b.y});
-        if (b.trail.length > 6) b.trail.shift();
+    draw(ctx){
+        ctx.save();
+        ctx.globalAlpha=this.alpha;
+        ctx.translate(this.x,this.y);
+        ctx.rotate(this.rotation);
 
-        b.x += b.vx * dt;
-        b.y += b.vy * dt;
-        b.life--;
+        ctx.fillStyle=this.color;
+        ctx.fillRect(-this.size/2,-this.size/2,this.size,this.size);
 
-        // ricochet on pans
-        for (let p of pans) {
-            const dx = b.x - p.x;
-            const dy = b.y - p.y;
-            const dist = Math.hypot(dx, dy);
-            if (dist < p.r) {
-                const nx = dx / dist;
-                const ny = dy / dist;
-                const dot = b.vx*nx + b.vy*ny;
-                b.vx -= 2 * dot * nx;
-                b.vy -= 2 * dot * ny;
-                b.life += 25;
-                shake = 10;
+        ctx.restore();
+    }
+}
+
+// BLOOD DECALS
+class Decal {
+    constructor(x,y,size,permanent){
+        this.x=x; this.y=y;
+        this.size=size;
+        this.alpha=1;
+        this.permanent=permanent;
+    }
+    update(dt){
+        if (!this.permanent){
+            this.alpha-=0.01*dt;
+            if (this.alpha<0) this.alpha=0;
+        }
+    }
+    draw(ctx){
+        ctx.save();
+        ctx.globalAlpha=this.alpha;
+        ctx.fillStyle="#8b0000";
+        ctx.beginPath();
+        ctx.arc(this.x,this.y,this.size,0,Math.PI*2);
+        ctx.fill();
+        ctx.restore();
+    }
+}
+
+// ================================================================
+//  BULLET
+// ================================================================
+class Bullet {
+    constructor(x,y,vx,vy){
+        this.x=x; this.y=y;
+        this.vx=vx; this.vy=vy;
+        this.life=80;
+
+        this.trail=[];
+
+        this.smokeLife = 0;
+    }
+
+    update(dt){
+        this.trail.push({x:this.x, y:this.y});
+        if (this.trail.length>10) this.trail.shift();
+
+        this.x+=this.vx*dt;
+        this.y+=this.vy*dt;
+
+        this.life--;
+        this.smokeLife++;
+    }
+
+    draw(ctx, slowmo){
+        // Neon line
+        ctx.strokeStyle="rgba(255,255,255,0.6)";
+        ctx.beginPath();
+        for (let t of this.trail) ctx.lineTo(t.x,t.y);
+        ctx.stroke();
+
+        // Smoke distortion style
+        const alpha = 0.5 + Math.sin(this.smokeLife*0.3)*0.2;
+        ctx.fillStyle="rgba(200,200,200," + (alpha*0.25) + ")";
+        ctx.fillRect(this.x-2,this.y-2,4,4);
+
+        // Core bullet
+        ctx.fillStyle="#fff";
+        ctx.fillRect(this.x,this.y,4,2);
+    }
+}
+
+// ================================================================
+//  ENEMY
+// ================================================================
+class Enemy {
+    constructor(x,y){
+        this.x=x; this.y=y;
+        this.w=40; this.h=60;
+        this.hp=3;
+        this.alive=true;
+        this.deathT=0;
+    }
+
+    hit(scene){
+        this.hp--;
+        if (this.hp<=0){
+            this.alive=false;
+            this.deathT=40;
+
+            // GORE BURST
+            for (let i=0;i<25;i++){
+                scene.particles.push(new Particle(
+                    this.x+20,
+                    this.y+20,
+                    rand(-4,4),
+                    rand(-6,-2),
+                    rand(3,6),
+                    "red",
+                    rand(20,50),
+                    40
+                ));
             }
+
+            // BIG CHUNKS
+            for (let i=0;i<6;i++){
+                scene.particles.push(new Particle(
+                    this.x+20,
+                    this.y+20,
+                    rand(-3,3),
+                    rand(-5,-1),
+                    rand(8,14),
+                    "#8b0000",
+                    rand(60,120),
+                    120
+                ));
+            }
+
+            // SPLAT DECAL (permanent!)
+            scene.decals.push(new Decal(this.x+20, this.y+55, rand(10,20), true));
+        }
+    }
+
+    update(){
+        if (!this.alive && this.deathT>0)
+            this.deathT--;
+    }
+
+    draw(ctx){
+        if (this.alive){
+            ctx.fillStyle="#ff3333";
+            ctx.fillRect(this.x,this.y,this.w,this.h);
+        } else if (this.deathT>0){
+            ctx.fillStyle=`rgba(255,0,0,${this.deathT/40})`;
+            ctx.fillRect(this.x,this.y,this.w,this.h);
+        }
+    }
+}
+
+// ================================================================
+//  PLAYER (with diving + flipping)
+// ================================================================
+class Player {
+    constructor(scene){
+        this.scene = scene;
+
+        this.x=100; this.y=300;
+        this.vx=0; this.vy=0;
+        this.w=40; this.h=60;
+
+        this.speed=6;
+        this.jumpPower=-15;
+
+        this.spin=false;
+        this.angle=0;
+
+        this.onGround=false;
+        this.coyote=0;
+
+        this.shootTimer=0;
+        this.knock=0;
+
+        this.dive=false;
+        this.diveTimer=0;
+        this.diveDir={x:0,y:0};
+    }
+
+    center(){ return [this.x+this.w/2, this.y+this.h/2]; }
+
+    triggerDive(dx,dy){
+        if (this.dive) return;
+
+        this.dive=true;
+        this.diveTimer=25;
+
+        this.diveDir={x:dx*20, y:dy*20};
+
+        this.spin=true;
+
+        this.scene.camera.addShake(5);
+
+        // Slow-mo
+        this.scene.game.timeScale = 0.25;
+    }
+
+    checkDoubleTaps(input){
+        if (input.keys["a"])  if (input.registerTap("a")) this.triggerDive(-1,0);
+        if (input.keys["d"])  if (input.registerTap("d")) this.triggerDive(1,0);
+        if (input.keys["w"])  if (input.registerTap("w")) this.triggerDive(0,-1);
+        if (input.keys["s"])  if (input.registerTap("s")) this.triggerDive(0,1);
+    }
+
+    update(dt){
+        const input = this.scene.game.input;
+
+        this.checkDoubleTaps(input);
+
+        // Normal slow-mo disabled when not diving
+        if (!this.dive)
+            this.scene.game.timeScale = input.key("Shift") ? 0.25 : 1;
+
+        // DIVE MOVEMENT
+        if (this.dive){
+            this.x += this.diveDir.x * dt;
+            this.y += this.diveDir.y * dt;
+
+            this.diveTimer--;
+            if (this.diveTimer<=0){
+                this.dive=false;
+                this.spin=false;
+                this.scene.game.timeScale = 1;
+            }
+        } else {
+            // NORMAL MOVEMENT
+            const dir = (input.key("a")?-1:0) + (input.key("d")?1:0);
+            this.vx = dir * this.speed;
+
+            this.vy += 0.8;
+            if (this.onGround) this.coyote=10;
+            else if (this.coyote>0) this.coyote--;
+
+            if (input.key(" ") && this.coyote>0){
+                this.vy=this.jumpPower;
+                this.coyote=0;
+                this.spin=true;
+                this.scene.camera.addShake(6);
+            }
+
+            this.x+=(this.vx + this.knock)*dt;
+            this.y+=this.vy*dt;
+            this.knock*=0.85;
         }
 
-        // enemy hit
-        for (let en of enemies) {
-            if (!en.alive) continue;
-            if (b.x > en.x && b.x < en.x+en.w &&
-                b.y > en.y && b.y < en.y+en.h) {
+        // GROUND + WALLS
+        this.onGround=false;
+        const floor=this.scene.game.canvas.height-20;
+        if (this.y+this.h>floor){
+            this.y=floor-this.h;
+            this.vy=0;
+            this.onGround=true;
+            if (!this.dive) this.spin=false;
+        }
 
-                en.hp--;
-                b.life = 0;
-                player.knockback = -Math.cos(Math.atan2(mouse.y - py, mouse.x - px)) * 3;
+        if (this.x<0) this.x=0;
+        if (this.x+this.w>1000) this.x=1000-this.w;
 
-                if (en.hp <= 0) {
-                    en.alive = false;
-                    en.deathT = 40;
-                    shake = 12;
+        // SPIN
+        if (this.spin) this.angle += 0.4 * dt;
+        else this.angle *= 0.8;
+
+        // SHOOT
+        this.shootTimer-=dt;
+        if (input.mouse.down && this.shootTimer<=0){
+            this.shootTimer=4;
+
+            const [cx,cy]=this.center();
+            const aim=Math.atan2(input.mouse.y-cy,input.mouse.x-cx);
+
+            this.scene.spawnBullet(cx,cy-10,aim);
+            this.scene.spawnBullet(cx,cy+10,aim);
+
+            this.scene.camera.addShake(3);
+        }
+    }
+
+    draw(ctx){
+        ctx.save();
+        ctx.translate(this.x+this.w/2, this.y+this.h/2);
+        ctx.rotate(this.angle);
+        ctx.fillStyle="#ffd800";
+        ctx.fillRect(-this.w/2,-this.h/2,this.w,this.h);
+        ctx.restore();
+    }
+}
+
+// ================================================================
+//  MAIN SCENE
+// ================================================================
+class MainScene {
+    constructor(game){
+        this.game=game;
+        this.camera=new Camera();
+
+        this.player=new Player(this);
+
+        this.bullets=[];
+        this.enemies=[ new Enemy(700,330) ];
+
+        this.particles=[];
+        this.decals=[];
+
+        this.pans=[
+            {x:400,y:380,r:35},
+            {x:550,y:260,r:35}
+        ];
+    }
+
+    spawnBullet(x,y,ang){
+        const vx=Math.cos(ang)*16;
+        const vy=Math.sin(ang)*16;
+        this.bullets.push(new Bullet(x,y,vx,vy));
+    }
+
+    spawnSparks(x,y,dirx,diry){
+        for (let i=0;i<10;i++){
+            const a=Math.atan2(diry,dirx) + rand(-0.5,0.5);
+            this.particles.push(new Particle(
+                x,y,
+                Math.cos(a)*rand(2,6),
+                Math.sin(a)*rand(2,6),
+                rand(2,4),
+                "yellow",
+                rand(10,20),
+                20
+            ));
+        }
+    }
+
+    update(dt){
+        this.player.update(dt);
+
+        // PARTICLES
+        for (let p of this.particles) p.update(dt);
+        this.particles = this.particles.filter(p=>p.life>0 && p.alpha>0);
+
+        // DECALS
+        for (let d of this.decals) d.update(dt);
+        this.decals = this.decals.filter(d=>d.alpha>0 || d.permanent);
+
+        // BULLETS
+        for (let b of this.bullets){
+            b.update(dt);
+
+            // PANS / RICOCHET
+            for (let p of this.pans){
+                const d=dist(b.x,b.y,p.x,p.y);
+                if (d<p.r){
+                    const nx=(b.x-p.x)/d, ny=(b.y-p.y)/d;
+                    const dot=b.vx*nx + b.vy*ny;
+                    b.vx-=2*dot*nx;
+                    b.vy-=2*dot*ny;
+                    b.life+=20;
+
+                    this.spawnSparks(b.x,b.y,b.vx,b.vy);
+                    this.camera.addShake(8);
+                }
+            }
+
+            // ENEMY HIT
+            for (let e of this.enemies){
+                if (!e.alive) continue;
+                if (rectPoint(b.x,b.y,e)){
+                    e.hit(this);
+                    b.life=0;
+
+                    // Knockback
+                    const [cx,cy]=this.player.center();
+                    const ang=Math.atan2(this.game.input.mouse.y-cy, this.game.input.mouse.x-cx);
+                    this.player.knock = -Math.cos(ang)*3;
+
+                    if (!e.alive) this.camera.addShake(12);
                 }
             }
         }
-    });
 
-    // cleanup
-    for (let i=bullets.length-1; i>=0; i--)
-        if (bullets[i].life <= 0) bullets.splice(i,1);
+        this.bullets=this.bullets.filter(b=>b.life>0);
 
-    // enemy death animation
-    enemies.forEach(e=>{
-        if (!e.alive && e.deathT > 0) e.deathT--;
-    });
-}
-
-// ============================================================
-// DRAW
-// ============================================================
-function draw() {
-    ctx.clearRect(0,0,canvas.width,canvas.height);
-
-    // camera shake
-    if (shake > 0) shake -= 0.8;
-    ctx.save();
-    ctx.translate((Math.random()-0.5)*shake, (Math.random()-0.5)*shake);
-
-    // tint for slow-mo
-    if (timeScale < 1) {
-        ctx.fillStyle = "rgba(0,255,255,0.12)";
-        ctx.fillRect(0,0,canvas.width,canvas.height);
+        // ENEMY UPDATE
+        this.enemies.forEach(e=>e.update());
     }
 
-    // pans
-    ctx.fillStyle = "#ccc";
-    for (let p of pans) {
-        ctx.beginPath();
-        ctx.arc(p.x, p.y, p.r, 0, Math.PI*2);
-        ctx.fill();
+    draw(ctx){
+        ctx.clearRect(0,0,this.game.canvas.width,this.game.canvas.height);
+
+        ctx.save();
+        this.camera.apply(ctx);
+
+        // SLOWMO TINT
+        if (this.game.timeScale < 1){
+            ctx.fillStyle="rgba(0,255,255,0.15)";
+            ctx.fillRect(0,0,1000,550);
+        }
+
+        // PANS
+        ctx.fillStyle="#ccc";
+        for (let p of this.pans){
+            ctx.beginPath();
+            ctx.arc(p.x,p.y,p.r,0,Math.PI*2);
+            ctx.fill();
+        }
+
+        // DECALS
+        for (let d of this.decals) d.draw(ctx);
+
+        // PARTICLES
+        for (let p of this.particles) p.draw(ctx);
+
+        // BULLETS
+        const slowmo=this.game.timeScale<1;
+        for (let b of this.bullets) b.draw(ctx, slowmo);
+
+        // PLAYER
+        this.player.draw(ctx);
+
+        // ENEMIES
+        this.enemies.forEach(e=>e.draw(ctx));
+
+        ctx.restore();
     }
-
-    // bullets + trails
-    bullets.forEach(b=>{
-        ctx.strokeStyle = "rgba(255,255,255,0.5)";
-        ctx.beginPath();
-        for (let i=0;i<b.trail.length;i++){
-            const t = b.trail[i];
-            ctx.lineTo(t.x, t.y);
-        }
-        ctx.stroke();
-
-        ctx.fillStyle = "#fff";
-        ctx.fillRect(b.x, b.y, 4, 2);
-    });
-
-    // player
-    ctx.save();
-    ctx.translate(player.x + player.w/2, player.y + player.h/2);
-    ctx.rotate(player.angle);
-    ctx.fillStyle = "#ffd800";
-    ctx.fillRect(-player.w/2, -player.h/2, player.w, player.h);
-    ctx.restore();
-
-    // enemies
-    enemies.forEach(e=>{
-        if (e.alive) {
-            ctx.fillStyle = "#ff3333";
-            ctx.fillRect(e.x, e.y, e.w, e.h);
-        } else if (e.deathT > 0) {
-            ctx.fillStyle = `rgba(255,0,0,${e.deathT/40})`;
-            ctx.fillRect(e.x, e.y, e.w, e.h);
-        }
-    });
-
-    ctx.restore();
 }
 
-// ============================================================
-// LOOP
-// ============================================================
-function loop(t) {
-    const dt = ((t-last)/16.67) * timeScale;
-    last = t;
+// ================================================================
+//  START GAME
+// ================================================================
+new Game(document.getElementById("game"));
 
-    update(dt);
-    draw();
-
-    requestAnimationFrame(loop);
-}
-requestAnimationFrame(loop);
 </script>
