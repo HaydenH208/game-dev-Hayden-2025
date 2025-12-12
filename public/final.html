@@ -105,6 +105,20 @@ class Player{ constructor(){ this.x=140; this.y=world.height - 160; this.w=44; t
     playerTrail.unshift(new TrailPoint(this.x + this.w/2, this.y + this.h/2, this.pose)); if(playerTrail.length>14) playerTrail.pop(); }
   draw(ctx){ ctx.save(); ctx.globalAlpha = 0.28; ctx.beginPath(); ctx.ellipse(this.x + this.w/2, this.y + this.h + 6, this.w*0.7, 8, 0,0,Math.PI*2); ctx.fillStyle='#000'; ctx.fill(); ctx.globalAlpha = 1; ctx.restore(); ctx.save(); for(let i=playerTrail.length-1;i>=0;i--){ const p=playerTrail[i]; const t=(i/playerTrail.length); ctx.globalAlpha = lerp(0.04,0.35,1-t); drawPlayerSilhouette(ctx, p.x - this.w/2, p.y - this.h/2, this.w, this.h, p.a, 2 + t*4, true); ctx.globalAlpha = 1; } ctx.restore(); drawPlayerSilhouette(ctx, this.x, this.y, this.w, this.h, this.pose, 0, false); ctx.save(); ctx.fillStyle='rgba(0,0,0,0.5)'; ctx.roundRectPath(this.x - 4, this.y - 12, this.w + 8, 6, 3); ctx.fill(); ctx.fillStyle='#00f2e8'; ctx.fillRect(this.x - 4, this.y - 12, (this.bulletTimeMeter/100) * (this.w + 8), 6); ctx.restore(); }}
 const player = new Player();
+  player.onGround = false;
+for (let p of level.platforms) {
+    if (player.x < p.x + p.w &&
+        player.x + player.w > p.x &&
+        player.y + player.h <= p.y + 15 &&
+        player.y + player.h + player.vy * dt >= p.y) {
+
+        player.y = p.y - player.h;
+        player.vy = 0;
+        player.onGround = true;
+        player.coyote = 8;
+    }
+}
+
 
 function drawPlayerSilhouette(ctx,x,y,w,h,rot=0,outlineBoost=0,ghost=false){ ctx.save(); ctx.translate(x + w/2, y + h/2); ctx.rotate(rot); ctx.translate(-w/2, -h/2); const bodyGr = ctx.createLinearGradient(0,0,0,h); bodyGr.addColorStop(0, ghost? 'rgba(255,255,255,0.05)' : '#ffd965'); bodyGr.addColorStop(1, ghost? 'rgba(255,255,255,0.01)' : '#e6b400'); if(!ghost){ ctx.fillStyle='#0b0b0d'; ctx.roundRectPath(-4-outlineBoost, -6-outlineBoost, w+8+outlineBoost*2, h+12+outlineBoost*2, 10 + outlineBoost); ctx.fill(); } ctx.fillStyle = bodyGr; ctx.roundRectPath(0,0,w,h,10); ctx.fill(); if(!ghost){ ctx.fillStyle='rgba(0,0,0,0.06)'; ctx.roundRectPath(4, h*0.2, w-8, h*0.6, 8); ctx.fill(); } if(!ghost){ ctx.save(); ctx.beginPath(); ctx.shadowBlur = 18; ctx.shadowColor = 'rgba(0,200,190,0.25)'; ctx.fillStyle = '#091213'; ctx.roundRectPath(w*0.4, h*0.18, w*0.4, h*0.22, 6); ctx.fill(); ctx.shadowBlur = 0; ctx.fillStyle='rgba(0,250,230,0.12)'; ctx.roundRectPath(w*0.43, h*0.2, w*0.18, h*0.12, 4); ctx.fill(); ctx.restore(); } if(!ghost){ ctx.lineWidth = 2; ctx.strokeStyle = '#0b0b0d'; ctx.roundRectPath(0,0,w,h,10); ctx.stroke(); } ctx.restore(); }
 
