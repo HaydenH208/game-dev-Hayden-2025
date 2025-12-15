@@ -1,348 +1,278 @@
-<!doctype html>
+<!DOCTYPE html>
 <html lang="en">
 <head>
-<meta charset="utf-8" />
-<title>Pedro-Style — Full Physics Rewrite (Wall-run, Vault, Ledge Snap)</title>
-<meta name="viewport" content="width=device-width,initial-scale=1" />
+<meta charset="UTF-8">
+<title>Pedro-Style FAT Demo</title>
 <style>
-  :root{ --bg1:#08080a; --bg2:#151417; --accent:#00f2e8; }
-  html,body{height:100%; margin:0; background:var(--bg1); color:#ddd; font-family:Inter,system-ui,Segoe UI,Roboto,Arial;}
-  canvas{display:block; margin:0 auto; background:transparent;}
-  .hint{ position:fixed; left:12px; bottom:12px; background:rgba(0,0,0,0.5); padding:8px 10px; border-radius:8px; font-size:13px; color:#eee; backdrop-filter: blur(4px); }
+html,body{margin:0;background:#111;overflow:hidden}
+canvas{display:block;margin:auto;background:#1a1a1a}
 </style>
 </head>
 <body>
-<canvas id="game"></canvas>
-<div class="hint">WASD move • Mouse aim • LMB shoot • Space jump • K dash • Hold A/D near wall to wall-run • R restart • N/P levels</div>
+<canvas id="c"></canvas>
 
 <script>
-/* ==========================================================
-   Pedro-Style — Full Physics Rewrite
-   - Robust rectangle collisions in world-space
-   - Wall-run, wall-jump, vault (low obstacle), ledge snap/auto-edge grab
-   - Fixed-step physics + variable rendering
-   - Preserves bullets/particles/enemies basics
-   ========================================================== */
+// ==========================================================
+// CANVAS
+// ==========================================================
+const canvas = document.getElementById("c");
+const ctx = canvas.getContext("2d");
+canvas.width = 1100;
+canvas.height = 600;
 
-const canvas = document.getElementById('game');
-const ctx = canvas.getContext('2d');
-
-function fit(){ const ratio = 16/9; let w = Math.min(window.innerWidth, 1400); let h = Math.min(window.innerHeight, 820); if(w/h > ratio) w = Math.round(h*ratio); else h = Math.round(w/ratio); canvas.width = w; canvas.height = h; }
-fit(); window.addEventListener('resize', fit);
-
-// helpers
-function clamp(v,a,b){return Math.max(a,Math.min(b,v));}
-function lerp(a,b,t){return a+(b-a)*t;}
-
-// world & camera
-const world = { width: 3200, height: 900, camX:0, camY:0 };
-function worldToScreen(x,y){ return {x: x - world.camX, y: y - world.camY}; }
-
-// input
+// ==========================================================
+// INPUT
+// ==========================================================
 const keys = {};
-window.addEventListener('keydown', e=> keys[e.key.toLowerCase()] = true);
-window.addEventListener('keyup', e=> keys[e.key.toLowerCase()] = false);
-let mouse = {x:0,y:0,down:false,right:false};
-canvas.addEventListener('mousemove', e=>{ const r=canvas.getBoundingClientRect(); mouse.x = e.clientX - r.left; mouse.y = e.clientY - r.top; });
-canvas.addEventListener('mousedown', e=>{ if(e.button===0) mouse.down=true; if(e.button===2) mouse.right=true; });
-canvas.addEventListener('mouseup', e=>{ if(e.button===0) mouse.down=false; if(e.button===2) mouse.right=false; });
-canvas.addEventListener('contextmenu', e=> e.preventDefault());
+addEventListener("keydown",e=>keys[e.key.toLowerCase()]=true);
+addEventListener("keyup",e=>keys[e.key.toLowerCase()]=false);
 
-// time - fixed physics timestep
-let last = performance.now();
-let accumulator = 0;
-const PHYSICS_STEP = 1000/60; // ms
-let timeScale = 1;
+const mouse={x:0,y:0,down:false};
+canvas.onmousemove=e=>{
+  const r=canvas.getBoundingClientRect();
+  mouse.x=e.clientX-r.left;
+  mouse.y=e.clientY-r.top;
+};
+canvas.onmousedown=()=>mouse.down=true;
+canvas.onmouseup=()=>mouse.down=false;
 
-// collision util - AABB
-function aabbOverlap(a,b){ return a.x < b.x + b.w && a.x + a.w > b.x && a.y < b.y + b.h && a.y + a.h > b.y; }
-
-// level format
-const levels = [
-  { name: 'Intro Dock', width:1400, platforms: [ {x:0,y:820,w:1400,h:80}, {x:240,y:660,w:220,h:16}, {x:520,y:560,w:200,h:16}, {x:760,y:620,w:180,h:16}, {x:1080,y:540,w:220,h:16}, {x:1300,y:460,w:120,h:16} ], pans: [{x:420,y:740,r:36},{x:760,y:580,r:34}], enemySpawns:[{x:900,y:740},{x:1200,y:740}], playerStart:{x:120,y:740} },
-  { name: 'Narrow Tower', width:2200, platforms:[ {x:0,y:820,w:2200,h:80}, {x:220,y:700,w:160,h:16},{x:420,y:620,w:160,h:16},{x:620,y:540,w:160,h:16},{x:820,y:460,w:160,h:16},{x:1020,y:380,w:160,h:16},{x:1220,y:460,w:160,h:16}], pans:[{x:520,y:560,r:34}], enemySpawns:[{x:600,y:760},{x:1000,y:420}], playerStart:{x:120,y:740} },
-  { name: 'Silo Run', width:3200, platforms:[ {x:0,y:820,w:3200,h:80}, {x:420,y:660,w:220,h:16}, {x:860,y:580,w:400,h:16}, {x:1400,y:700,w:360,h:16}, {x:1900,y:560,w:300,h:16}, {x:2400,y:640,w:300,h:16}, {x:2800,y:560,w:240,h:16}], pans:[{x:860,y:540,r:36},{x:1900,y:520,r:36}], enemySpawns:[{x:820,y:560},{x:1500,y:720},{x:2100,y:540}], playerStart:{x:120,y:740} }
-];
-let levelIndex = 0;
-let level = levels[levelIndex];
-
-function loadLevel(idx){ levelIndex = clamp(idx,0,levels.length-1); level = levels[levelIndex]; world.width = level.width; bullets.length=0; particles.length=0; spawnEnemiesFromLevel(); player.resetTo(level.playerStart.x, level.playerStart.y); }
-
-// entities: particles, bullets, enemies
-class Particle{ constructor(x,y,vx,vy,life,size,col){ this.x=x; this.y=y; this.vx=vx; this.vy=vy; this.life=life; this.max=life; this.size=size; this.col=col; } update(dt){ this.vy += 0.8*dt; this.x += this.vx*dt; this.y += this.vy*dt; this.life -= dt; } draw(ctx){ if(this.life<=0) return; ctx.save(); ctx.globalAlpha = Math.max(0, this.life/this.max); ctx.beginPath(); ctx.fillStyle = this.col; ctx.arc(this.x,this.y,this.size,0,Math.PI*2); ctx.fill(); ctx.restore(); } }
-const particles = [];
-function spawnParticles(x,y,count,spread=1,speed=2,cols=['#fff','#ffd'],size=2,life=20){ for(let i=0;i<count;i++){ const ang = Math.random()*Math.PI*2; const r = Math.random()*speed*spread; particles.push(new Particle(x + (Math.random()-0.5)*6, y+(Math.random()-0.5)*6, Math.cos(ang)*r, Math.sin(ang)*r - Math.random()*1.2, life*(0.6+Math.random()*0.8), size*(0.5+Math.random()*1.5), cols[Math.floor(Math.random()*cols.length)])); } }
-
-class Bullet{ constructor(x,y,angle,speed=36,owner='player'){ this.x=x; this.y=y; this.vx=Math.cos(angle)*speed; this.vy=Math.sin(angle)*speed; this.life=80; this.r=3; this.owner=owner; this.trail=[]; } update(dt){ this.x += this.vx*dt; this.y += this.vy*dt; this.vy += 0.12*dt; this.trail.push({x:this.x,y:this.y}); if(this.trail.length>12) this.trail.shift(); this.life -= dt; } draw(ctx){ ctx.save(); // trail
-  ctx.beginPath(); for(let i=0;i<this.trail.length;i++){ const p=this.trail[i]; if(i===0) ctx.moveTo(p.x,p.y); else ctx.lineTo(p.x,p.y); } ctx.strokeStyle = this.owner==='player' ? 'rgba(0,200,180,0.2)' : 'rgba(255,160,120,0.14)'; ctx.lineWidth = 2; ctx.stroke(); // core
-  ctx.beginPath(); ctx.fillStyle = this.owner==='player' ? '#aaffff' : '#ffccaa'; ctx.arc(this.x,this.y,this.r,0,Math.PI*2); ctx.fill(); ctx.restore(); } }
-const bullets = [];
-function spawnBullet(x,y,angle,owner='player'){ bullets.push(new Bullet(x,y,angle, owner==='player'?36:22, owner)); spawnParticles(x + Math.cos(angle)*6, y + Math.sin(angle)*6, 6, 1.2, 2.0, owner==='player'?['#fff','#bff']:['#fff','#fca'], 2, 12); cameraShake(5); }
-
-// enemy
-class Enemy{ constructor(x,y){ this.x=x; this.y=y; this.w=44; this.h=56; this.hp=3; this.alive=true; this.state='patrol'; this.patrolCenter = x; this.patrolRange = 140; this.dir = Math.random()<0.5? -1:1; this.speed = 1.6; this.shootTimer = 0; }
-  update(dt){ if(!this.alive) return; // simple LOS check to player
-    const px = player.x + player.w/2, py = player.y + player.h/2; const ex = this.x + this.w/2, ey = this.y + this.h/2; const dist = Math.hypot(px-ex, py-ey);
-    if(dist < 520 && Math.abs(py - ey) < 140){ this.state = 'alert'; }
-    if(this.state==='patrol'){ this.x += this.dir * this.speed * dt; if(Math.abs(this.x - this.patrolCenter) > this.patrolRange) this.dir *= -1; }
-    if(this.state==='alert'){ // face player and shoot occasionally
-      this.shootTimer -= dt*30; if(this.shootTimer <= 0){ this.shootTimer = 40 + Math.random()*30; const angle = Math.atan2(py - ey, px - ex); spawnBullet(ex, ey, angle + (Math.random()-0.5)*0.06, 'enemy'); }
-      // slow approach
-      if(px < this.x) this.x -= 1.2 * dt; else this.x += 1.2 * dt;
-      if(dist > 700) this.state = 'patrol'; }
-    // hit by player bullets
-    for(let i=bullets.length-1;i>=0;i--){ const b = bullets[i]; if(b.owner !== 'player') continue; if(b.x > this.x && b.x < this.x + this.w && b.y > this.y && b.y < this.y + this.h){ bullets.splice(i,1); this.hp--; spawnParticles(b.x,b.y,10,1.6,2,['#ff8c8c','#ff4d4d'],3,22); cameraShake(8); comboHit(); if(this.hp<=0){ this.alive=false; spawnParticles(this.x+this.w/2,this.y+this.h/2,30,2.4,3.6,['#ff8c66','#aa0000'],4,36); } } }
-  }
-  draw(ctx){ if(!this.alive) return; ctx.save(); const g = ctx.createLinearGradient(this.x, this.y, this.x, this.y + this.h); g.addColorStop(0,'#ff6b6b'); g.addColorStop(1,'#aa2222'); ctx.fillStyle = g; ctx.roundRectPath(this.x, this.y, this.w, this.h, 8); ctx.fill(); // eyes
-    const eyeY = this.y + this.h*0.28; const eyeX1 = this.x + this.w*0.28; const eyeX2 = this.x + this.w*0.72; ctx.fillStyle='#fff'; ctx.beginPath(); ctx.arc(eyeX1, eyeY, 6,0,Math.PI*2); ctx.arc(eyeX2, eyeY, 6,0,Math.PI*2); ctx.fill(); ctx.fillStyle='#400'; ctx.beginPath(); ctx.arc(eyeX1,eyeY,3,0,Math.PI*2); ctx.arc(eyeX2,eyeY,3,0,Math.PI*2); ctx.fill(); ctx.restore(); }
+// ==========================================================
+// UTILS
+// ==========================================================
+function clamp(v,a,b){return Math.max(a,Math.min(b,v))}
+function roundRect(ctx,x,y,w,h,r){
+  ctx.beginPath();
+  ctx.moveTo(x+r,y);
+  ctx.lineTo(x+w-r,y);
+  ctx.quadraticCurveTo(x+w,y,x+w,y+r);
+  ctx.lineTo(x+w,y+h-r);
+  ctx.quadraticCurveTo(x+w,y+h,x+w-r,y+h);
+  ctx.lineTo(x+r,y+h);
+  ctx.quadraticCurveTo(x,y+h,x,y+h-r);
+  ctx.lineTo(x,y+r);
+  ctx.quadraticCurveTo(x,y,x+r,y);
+  ctx.closePath();
 }
-const enemies = [];
-function spawnEnemiesFromLevel(){ enemies.length=0; for(const s of level.enemySpawns) enemies.push(new Enemy(s.x, s.y)); }
 
-// player with robust physics
-class PlayerEntity{
-  constructor(){ this.w=44; this.h=64; this.resetTo(120, 740); this.maxSpeed = 8.4; this.accel = 120; this.airAccel = 40; this.gravity = 40; this.maxFall = 60; this.jumpVel = -16; this.doubleJump = true; this.dashTimer=0; this.wallRunTimer=0; this.wallRunDirection=0; this.ledgeGrabTimer=0; }
-  resetTo(x,y){ this.x = x; this.y = y; this.vx = 0; this.vy = 0; this.onGround = false; this.coyote = 0; this.availableJumps = 1; this.facing = 1; this.pose = 0; this.shootCooldown = 0; this.hp = 5; this.bulletTimeMeter = 100; }
-  physicsInput(dt){ // horizontal input
-    const left = keys['a']; const right = keys['d']; const inputX = (left? -1:0) + (right? 1:0);
-    // apply acceleration
-    const accel = this.onGround ? this.accel : this.airAccel;
-    const targetVx = inputX * this.maxSpeed;
-    this.vx = lerp(this.vx, targetVx, clamp(accel * dt / 100, 0, 1));
-    if(inputX !== 0) this.facing = inputX;
-    // gravity
-    this.vy += this.gravity * dt; if(this.vy > this.maxFall) this.vy = this.maxFall;
-    // wall-run detection: check overlap with near-vertical surface
-    const touchingLeftWall = this.checkWall(-1);
-    const touchingRightWall = this.checkWall(1);
-    if((touchingLeftWall || touchingRightWall) && !this.onGround && (left || right)){
-      // begin/continue wall-run
-      this.wallRunTimer = Math.min(0.6, this.wallRunTimer + dt);
-      this.wallRunDirection = touchingLeftWall ? -1 : 1;
-      this.vy = Math.min(this.vy, 6); // slow descent
-    } else {
-      this.wallRunTimer = Math.max(0, this.wallRunTimer - dt*1.4);
-      if(this.wallRunTimer <= 0) this.wallRunDirection = 0;
+// ==========================================================
+// WORLD / LEVEL
+// ==========================================================
+const platforms=[
+  {x:0,y:540,w:2000,h:60},
+  {x:300,y:420,w:300,h:20},
+  {x:700,y:330,w:250,h:20}
+];
+
+// ==========================================================
+// BULLETS
+// ==========================================================
+class Bullet{
+  constructor(x,y,a,enemy=false){
+    this.x=x;this.y=y;
+    this.vx=Math.cos(a)*18;
+    this.vy=Math.sin(a)*18;
+    this.life=60;
+    this.enemy=enemy;
+  }
+  update(){
+    this.x+=this.vx;
+    this.y+=this.vy;
+    this.life--;
+  }
+  draw(){
+    ctx.fillStyle=this.enemy?"#ff5555":"#00ffff";
+    ctx.fillRect(this.x-2,this.y-2,4,4);
+  }
+}
+const bullets=[];
+
+// ==========================================================
+// PLAYER
+// ==========================================================
+class Player{
+  constructor(){
+    this.x=100;this.y=300;
+    this.w=30;this.h=60;
+    this.vx=0;this.vy=0;
+    this.onGround=false;
+    this.cooldown=0;
+  }
+  update(){
+    const slow = keys["shift"] ? 0.25 : 1;
+
+    let dir=(keys["a"]?-1:0)+(keys["d"]?1:0);
+    this.vx=dir*6*slow;
+    this.vy+=0.8*slow;
+
+    if(keys[" "]&&this.onGround){
+      this.vy=-14;
+      this.onGround=false;
     }
-    // jump - edge cases handled in performJump
-  }
-  performJump(){ // called on jump pressed (edge detection done in input handler)
-    // if wall run -> wall jump
-    if(this.wallRunDirection !== 0){ this.vy = this.jumpVel * 0.92; this.vx = 10 * -this.wallRunDirection; this.wallRunTimer = 0; cameraShake(8); spawnParticles(this.x + this.w/2, this.y + this.h/2, 10, 1.5, 2.2, ['#fff','#cce'], 3, 14); return; }
-    // if ledge grab active, vault
-    if(this.ledgeGrabTimer > 0){ // snap up a bit and forward
-      this.vy = this.jumpVel * 0.75; this.x += this.facing * 12; this.ledgeGrabTimer = 0; cameraShake(6); spawnParticles(this.x + this.w/2, this.y + this.h/2, 8, 1.2, 1.6, ['#fff','#ddd'], 3, 12); return; }
-    // normal grounded jump or coyote
-    if(this.onGround || this.coyote > 0){ this.vy = this.jumpVel; this.onGround=false; this.coyote=0; cameraShake(6); spawnParticles(this.x + this.w/2, this.y + this.h + 6, 8, 1.5, 1.6, ['#fff','#ddd'], 3, 14); return; }
-    // double-jump if available
-    if(this.availableJumps > 0){ this.vy = this.jumpVel * 0.9; this.availableJumps -= 1; cameraShake(5); spawnParticles(this.x + this.w/2, this.y + this.h/2, 8, 1.2, 1.8, ['#fff','#bff'], 2.6, 12); }
-  }
-  checkWall(side){ // side = -1 left, 1 right; check small probe rectangle near player's side
-    const probe = { x: this.x + (side===-1 ? -6 : this.w + 6), y: this.y + 6, w: 6, h: this.h - 12 };
-    for(const p of level.platforms){ if(aabbOverlap(probe, p)) return true; }
-    // also check world edges
-    if(side===-1 && this.x <= 4) return true; if(side===1 && this.x + this.w >= world.width - 4) return true;
-    return false;
-  }
-  // resolve collisions with platforms using a swept AABB approach for robust collision
-  integrateAndResolve(dt){
-    // integrate
-    const newX = this.x + this.vx * dt;
-    const newY = this.y + this.vy * dt;
-    // horizontal sweep
-    const horizBox = { x: Math.min(this.x, newX), y: this.y, w: Math.abs(newX - this.x) + this.w, h: this.h };
-    for(const p of level.platforms){ if(aabbOverlap(horizBox, p)){
-        if(this.vx > 0) { // moving right - hit left side
-          newX = p.x - this.w; this.vx = 0;
-        } else if(this.vx < 0) { // moving left - hit right side
-          newX = p.x + p.w; this.vx = 0;
+
+    this.x+=this.vx;
+    this.y+=this.vy;
+
+    this.onGround=false;
+    for(const p of platforms){
+      if(this.x+this.w>p.x && this.x<p.x+p.w){
+        if(this.y+this.h<=p.y+10 && this.y+this.h+this.vy>=p.y){
+          this.y=p.y-this.h;
+          this.vy=0;
+          this.onGround=true;
         }
-      } }
-    // vertical sweep
-    const vertBox = { x: newX, y: Math.min(this.y, newY), w: this.w, h: Math.abs(newY - this.y) + this.h };
-    this.onGround = false;
-    for(const p of level.platforms){ if(aabbOverlap(vertBox, p)){
-        if(this.vy > 0){ // falling and hit top
-          newY = p.y - this.h; this.vy = 0; this.onGround = true; this.coyote = 8; this.availableJumps = 1; // regain double jump
-          // landing effects
-        } else if(this.vy < 0){ // moving up, hit bottom of platform
-          newY = p.y + p.h; this.vy = 0;
-        }
-      } }
-    // ledge snap / grab: if we're close to a platform top and moving toward it, snap upward slightly
-    for(const p of level.platforms){ // check edges only when falling and near
-      const nearX = (this.x + this.w/2) > p.x - 12 && (this.x + this.w/2) < p.x + p.w + 12;
-      const distToTop = (p.y - (this.y + this.h));
-      if(!this.onGround && distToTop > 6 && distToTop < 28 && nearX && this.vy > 0){ // within ledge reach
-        // if player's center is horizontally near platform and moving towards it, begin ledge grab
-        this.ledgeGrabTimer = 0.18; // small window to vault
-        // optionally nudge x into platform bounds slightly
-        if(this.x + this.w/2 < p.x + p.w/2) this.facing = 1; else this.facing = -1;
       }
     }
-    // apply final
-    this.x = newX; this.y = newY;
-    // clamp world
-    this.x = clamp(this.x, 0, world.width - this.w);
-    this.y = clamp(this.y, -200, world.height - this.h);
+
+    this.cooldown--;
+    if(mouse.down && this.cooldown<=0){
+      const cx=this.x+this.w/2;
+      const cy=this.y+this.h*0.4;
+      const a=Math.atan2(mouse.y-cy,mouse.x-cx);
+      bullets.push(new Bullet(cx,cy,a,false));
+      this.cooldown=6;
+    }
   }
-  update(dt){ // bullet time meter handled externally in main update
-    // input & movement
-    this.physicsInput(dt);
-    // decrement ledgegrab timer
-    if(this.ledgeGrabTimer > 0) this.ledgeGrabTimer = Math.max(0, this.ledgeGrabTimer - dt);
-    // integrate and resolve collisions
-    this.integrateAndResolve(dt);
-    // simple friction when on ground
-    if(this.onGround){ this.vx *= 0.98; }
-    // shooting
-    this.shootCooldown -= dt * 30;
-    if(mouse.down && this.shootCooldown <= 0){ this.shootCooldown = 4; const px = this.x + this.w/2; const py = this.y + this.h/2; const aimX = mouse.x + world.camX; const aimY = mouse.y + world.camY; const ang = Math.atan2(aimY - py, aimX - px); spawnBullet(px + Math.cos(ang)*8, py + Math.sin(ang)*8, ang, 'player'); setTimeout(()=> spawnBullet(px + Math.cos(ang)*8, py + Math.sin(ang)*8, ang, 'player'), 40); }
+}
+const player=new Player();
+
+// ==========================================================
+// ENEMY
+// ==========================================================
+class Enemy{
+  constructor(x,y){
+    this.x=x;this.y=y;
+    this.w=30;this.h=60;
+    this.vx=0;this.vy=0;
+    this.state="idle";
+    this.cooldown=0;
+    this.dead=false;
+    this.fade=40;
+    this.deathRot=(Math.random()-.5)*0.6;
   }
-  draw(ctx){ // shadow
-    ctx.save(); ctx.globalAlpha = 0.28; ctx.beginPath(); ctx.ellipse(this.x + this.w/2, this.y + this.h + 8, this.w*0.75, 8, 0,0,Math.PI*2); ctx.fillStyle='#000'; ctx.fill(); ctx.restore(); // trail
-    ctx.save(); for(let i=0;i<playerTrail.length;i++){ const p = playerTrail[i]; const t = (i/playerTrail.length); ctx.globalAlpha = lerp(0.05,0.34,1 - t); // === PROCEDURAL HUMAN RIG DRAWING ===
-function drawHuman(ctx, ent, opts={enemy:false}){
-  const cx = ent.x + ent.w/2, cy = ent.y + ent.h*0.45;
-  const aimX = opts.enemy ? (player.x + player.w/2) : (mouse.x + world.camX);
-  const aimY = opts.enemy ? (player.y + player.h/2) : (mouse.y + world.camY);
-  const aimAng = Math.atan2(aimY - cy, aimX - cx);
-  const lean = clamp(ent.vx*0.04, -0.4, 0.4);
+  update(){
+    if(this.dead){
+      this.fade--;
+      return;
+    }
+
+    const dx=player.x-this.x;
+    const dy=player.y-this.y;
+    const d=Math.hypot(dx,dy);
+
+    switch(this.state){
+      case "idle":
+        if(d<450) this.state="aim";
+      break;
+      case "aim":
+        if(d<350) this.state="shoot";
+      break;
+      case "shoot":
+        this.cooldown--;
+        if(this.cooldown<=0){
+          const a=Math.atan2(dy,dx);
+          bullets.push(new Bullet(this.x+15,this.y+25,a,true));
+          this.cooldown=60;
+        }
+        if(d>450) this.state="idle";
+      break;
+    }
+  }
+}
+const enemies=[
+  new Enemy(500,360),
+  new Enemy(800,270)
+];
+
+// ==========================================================
+// HUMAN DRAW
+// ==========================================================
+function drawHuman(ent,isEnemy=false){
+  const cx=ent.x+ent.w/2;
+  const cy=ent.y+ent.h*0.45;
+  const ax=isEnemy?player.x+15:mouse.x;
+  const ay=isEnemy?player.y+25:mouse.y;
+  const ang=Math.atan2(ay-cy,ax-cx);
 
   ctx.save();
-  ctx.translate(cx, cy);
-  ctx.rotate(lean);
+  ctx.translate(cx,cy);
+  if(ent.dead) ctx.rotate(ent.deathRot);
 
-  // torso
-  ctx.fillStyle = opts.enemy ? '#9c2a2a' : '#ffd965';
-  ctx.strokeStyle = '#0b0b0d'; ctx.lineWidth = 2;
-  ctx.roundRectPath(-12, -22, 24, 44, 8); ctx.fill(); ctx.stroke();
+  ctx.fillStyle=isEnemy?"#8b2a2a":"#f5d76e";
+  roundRect(ctx,-12,-20,24,42,6);
+  ctx.fill();
 
-  // head
-  ctx.beginPath(); ctx.fillStyle = opts.enemy ? '#c43b3b' : '#ffeaa6';
-  ctx.arc(0, -36, 10, 0, Math.PI*2); ctx.fill(); ctx.stroke();
+  ctx.beginPath();
+  ctx.arc(0,-34,9,0,Math.PI*2);
+  ctx.fillStyle=isEnemy?"#b33":"#ffeaa6";
+  ctx.fill();
 
-  // arms (aiming)
-  ctx.save(); ctx.rotate(aimAng - lean);
-  ctx.strokeStyle = '#111'; ctx.lineWidth = 4; ctx.lineCap='round';
-  ctx.beginPath(); ctx.moveTo(6, -16); ctx.lineTo(20, -10); ctx.lineTo(30, -6); ctx.stroke();
+  ctx.save();
+  ctx.rotate(ang);
+  ctx.strokeStyle="#111";
+  ctx.lineWidth=4;
+  ctx.lineCap="round";
+  ctx.beginPath();
+  ctx.moveTo(6,-10);
+  ctx.lineTo(24,-4);
+  ctx.stroke();
+  ctx.fillStyle="#333";
+  ctx.fillRect(24,-7,12,5);
   ctx.restore();
 
-  // back arm
-  ctx.save(); ctx.rotate(aimAng - lean + 0.3);
-  ctx.strokeStyle = 'rgba(0,0,0,0.4)'; ctx.lineWidth = 3;
-  ctx.beginPath(); ctx.moveTo(-6, -16); ctx.lineTo(-18, -8); ctx.stroke();
-  ctx.restore();
-
-  // legs
-  const step = Math.sin(performance.now()*0.01 + ent.x*0.05) * (ent.onGround?6:2);
-  ctx.strokeStyle = '#111'; ctx.lineWidth = 4;
-  ctx.beginPath(); ctx.moveTo(-6, 22); ctx.lineTo(-8, 44 + step); ctx.stroke();
-  ctx.beginPath(); ctx.moveTo(6, 22); ctx.lineTo(8, 44 - step); ctx.stroke();
+  ctx.strokeStyle="#111";
+  ctx.beginPath();
+  ctx.moveTo(-6,20);
+  ctx.lineTo(-8,42);
+  ctx.stroke();
+  ctx.beginPath();
+  ctx.moveTo(6,20);
+  ctx.lineTo(8,42);
+  ctx.stroke();
 
   ctx.restore();
 }
+
+// ==========================================================
+// LOOP
+// ==========================================================
+function loop(){
+  ctx.clearRect(0,0,canvas.width,canvas.height);
+
+  ctx.fillStyle="#222";
+  for(const p of platforms) ctx.fillRect(p.x,p.y,p.w,p.h);
+
+  player.update();
+  enemies.forEach(e=>e.update());
+
+  for(let i=bullets.length-1;i>=0;i--){
+    const b=bullets[i];
+    b.update();
+    if(b.life<=0) bullets.splice(i,1);
+
+    if(!b.enemy){
+      enemies.forEach(e=>{
+        if(!e.dead &&
+           b.x>e.x&&b.x<e.x+e.w&&
+           b.y>e.y&&b.y<e.y+e.h){
+          e.dead=true;
+        }
+      });
+    }
   }
+
+  bullets.forEach(b=>b.draw());
+  drawHuman(player,false);
+  enemies.forEach(e=>{
+    if(e.dead){
+      ctx.globalAlpha=e.fade/40;
+      drawHuman(e,true);
+      ctx.globalAlpha=1;
+    }else drawHuman(e,true);
+  });
+
+  requestAnimationFrame(loop);
 }
-const player = new PlayerEntity();
-const playerTrail = [];
-function pushPlayerTrail(){ playerTrail.unshift({x: player.x + player.w/2, y: player.y + player.h/2, a: player.pose}); if(playerTrail.length>14) playerTrail.pop(); }
-
-function drawPlayerSilhouette(ctx,x,y,w,h,rot=0,outlineBoost=0,ghost=false){ ctx.save(); ctx.translate(x + w/2, y + h/2); ctx.rotate(rot); ctx.translate(-w/2, -h/2); const bodyGr = ctx.createLinearGradient(0,0,0,h); bodyGr.addColorStop(0, ghost? 'rgba(255,255,255,0.04)' : '#ffd965'); bodyGr.addColorStop(1, ghost? 'rgba(255,255,255,0.01)' : '#e6b400'); if(!ghost){ ctx.fillStyle='#0b0b0d'; ctx.roundRectPath(-4-outlineBoost, -6-outlineBoost, w+8+outlineBoost*2, h+12+outlineBoost*2, 10 + outlineBoost); ctx.fill(); } ctx.fillStyle = bodyGr; ctx.roundRectPath(0,0,w,h,10); ctx.fill(); if(!ghost){ ctx.fillStyle='rgba(0,0,0,0.06)'; ctx.roundRectPath(4, h*0.2, w-8, h*0.6, 8); ctx.fill(); } if(!ghost){ ctx.save(); ctx.beginPath(); ctx.shadowBlur = 18; ctx.shadowColor = 'rgba(0,200,190,0.25)'; ctx.fillStyle = '#091213'; ctx.roundRectPath(w*0.4, h*0.18, w*0.4, h*0.22, 6); ctx.fill(); ctx.shadowBlur = 0; ctx.fillStyle='rgba(0,250,230,0.12)'; ctx.roundRectPath(w*0.43, h*0.2, w*0.18, h*0.12, 4); ctx.fill(); ctx.restore(); } if(!ghost){ ctx.lineWidth = 2; ctx.strokeStyle = '#0b0b0d'; ctx.roundRectPath(0,0,w,h,10); ctx.stroke(); } ctx.restore(); }
-
-// camera follow
-function updateCamera(){ const tx = clamp(player.x + player.w/2 - canvas.width/2, 0, world.width - canvas.width); const ty = clamp(player.y + player.h/2 - canvas.height/2, 0, world.height - canvas.height); world.camX = lerp(world.camX, tx, 0.14); world.camY = lerp(world.camY, ty, 0.14); }
-function cameraShake(str){ camera.shake = Math.max(camera.shake || 0, str); }
-const camera = { shake: 0 };
-function applyCameraTransform(){ if(camera.shake > 0){ const s = camera.shake; const rx = (Math.random()*2-1)*s, ry = (Math.random()*2-1)*s; ctx.translate(-world.camX + rx, -world.camY + ry); camera.shake = Math.max(0, camera.shake - 0.6); } else { ctx.translate(-world.camX, -world.camY); } }
-
-// combat / scoring
-let score = 0, combo = 0, comboTimer = 0, bestCombo = 0; const floating = [];
-function comboHit(){ comboTimer = 120; combo += 1; bestCombo = Math.max(bestCombo, combo); score += Math.floor(150 * (1 + Math.floor(combo/3)*0.25)); floating.push({x: player.x + player.w/2, y: player.y, t: 60, txt: 'combo x' + combo}); }
-
-// simple HUD
-function drawHUD(){ ctx.setTransform(1,0,0,1,0,0); // crosshair
-  ctx.beginPath(); ctx.lineWidth = 2; ctx.strokeStyle = 'rgba(0,220,200,0.9)'; ctx.moveTo(mouse.x - 10, mouse.y); ctx.lineTo(mouse.x + 10, mouse.y); ctx.moveTo(mouse.x, mouse.y - 10); ctx.lineTo(mouse.x, mouse.y + 10); ctx.stroke(); ctx.beginPath(); ctx.fillStyle = 'rgba(0,220,200,0.9)'; ctx.arc(mouse.x, mouse.y, 3, 0, Math.PI*2); ctx.fill(); // score
-  ctx.font = '16px sans-serif'; ctx.fillStyle = '#fff'; ctx.fillText('Score: ' + score, canvas.width - 160, 28); ctx.fillStyle = '#ffd965'; ctx.fillText('Combo: ' + combo + ' (best ' + bestCombo + ')', canvas.width - 360, 28); ctx.fillStyle = '#aaa'; ctx.fillText('Level: ' + level.name, canvas.width/2 - 80, 28); // player hp
-  for(let i=0;i<5;i++){ ctx.beginPath(); ctx.fillStyle = i<player.hp ? '#ffdb4d' : 'rgba(255,255,255,0.06)'; ctx.roundRectPath(12 + i*26, 12, 20, 12, 4); ctx.fill(); ctx.strokeStyle = 'rgba(0,0,0,0.3)'; ctx.stroke(); } }
-
-// level/platform debug draw
-function drawLevel(ctx){ // background
-  const bg = ctx.createLinearGradient(world.camX,0, world.camX, canvas.height); bg.addColorStop(0,'#07070a'); bg.addColorStop(1,'#131214'); ctx.fillStyle = bg; ctx.fillRect(world.camX, world.camY, world.width, canvas.height); // platforms
-  for(const p of level.platforms){ ctx.fillStyle = '#121213'; ctx.roundRectPath(p.x, p.y, p.w, p.h, 6); ctx.fill(); ctx.lineWidth = 2; ctx.strokeStyle = 'rgba(255,255,255,0.03)'; ctx.stroke(); } // pans
-  for(const pa of level.pans){ const gr = ctx.createRadialGradient(pa.x - pa.r*0.3, pa.y - pa.r*0.4, pa.r*0.1, pa.x, pa.y, pa.r); gr.addColorStop(0,'#fff'); gr.addColorStop(0.4,'#ddd'); gr.addColorStop(0.7,'#aaa'); gr.addColorStop(1,'#666'); ctx.fillStyle = gr; ctx.beginPath(); ctx.arc(pa.x, pa.y, pa.r, 0, Math.PI*2); ctx.fill(); ctx.lineWidth = 4; ctx.strokeStyle = 'rgba(40,40,40,0.7)'; ctx.stroke(); } }
-
-// update loop (fixed timestep)
-function physStep(dtSec){ const dt = dtSec; // dt in seconds scaled by timeScale elsewhere
-  // player bullet-time meter drain/regen
-  const bulletTimeActive = mouse.right && player.bulletTimeMeter > 6;
-  timeScale = bulletTimeActive ? 0.18 : (keys['shift'] ? 0.28 : 1);
-  if(bulletTimeActive) player.bulletTimeMeter = Math.max(0, player.bulletTimeMeter - 16 * dt); else player.bulletTimeMeter = Math.min(100, player.bulletTimeMeter + 8 * dt);
-  // update player physics
-  player.update(dt);
-  pushPlayerTrail();
-  // bullets
-  for(let i=bullets.length-1;i>=0;i--){ bullets[i].update(dt); // collisions with world
-    // ricochet with pans
-    for(const pa of level.pans){ const dx = bullets[i].x - pa.x, dy = bullets[i].y - pa.y; const dist = Math.hypot(dx,dy); if(dist < pa.r + bullets[i].r){ const nx = dx/dist, ny = dy/dist; const dot = bullets[i].vx * nx + bullets[i].vy * ny; bullets[i].vx -= 2*dot*nx; bullets[i].vy -= 2*dot*ny; bullets[i].life += 18; spawnParticles(bullets[i].x, bullets[i].y, 6, 1.6, 3, ['#fff','#ffd','#ffd1'], 2, 16); cameraShake(8); } }
-    // enemy bullets hit player
-    if(bullets[i].owner === 'enemy'){ if(bullets[i].x > player.x && bullets[i].x < player.x + player.w && bullets[i].y > player.y && bullets[i].y < player.y + player.h){ bullets.splice(i,1); player.hp -= 1; spawnParticles(player.x + player.w/2, player.y + player.h/2, 10, 1.6, 2.6, ['#ffb3a0','#ff8c66'], 3.2, 18); cameraShake(10); if(player.hp <= 0){ setTimeout(()=> loadLevel(levelIndex), 300); } continue; } }
-    if(bullets[i].life <= 0 || bullets[i].x < -200 || bullets[i].x > world.width + 200 || bullets[i].y < -400 || bullets[i].y > world.height + 400) bullets.splice(i,1);
-  }
-  // particles
-  for(let i=particles.length-1;i>=0;i--){ particles[i].update(dt); if(particles[i].life <= 0) particles.splice(i,1); }
-  // enemies
-  for(const e of enemies) e.update(dt);
-  // combo timer
-  if(comboTimer > 0){ comboTimer -= dt*60; if(comboTimer <= 0) combo = 0; }
-  // floating texts
-  for(let i=floating.length-1;i>=0;i--){ floating[i].t -= dt*60; floating[i].y -= 12*dt; if(floating[i].t <= 0) floating.splice(i,1); }
-  updateCamera(); }
-
-// main loop: accumulative fixed-step plus render
-function mainLoop(now){ let frameMs = now - last; last = now; accumulator += frameMs * timeScale; const stepMs = PHYSICS_STEP; while(accumulator >= stepMs){ physStep(stepMs/1000); accumulator -= stepMs; }
-  render(); requestAnimationFrame(mainLoop); }
-requestAnimationFrame(mainLoop);
-
-// render
-function render(){ // base fade for motion softness
-  ctx.save(); ctx.setTransform(1,0,0,1,0,0); ctx.fillStyle = 'rgba(6,8,12,0.45)'; ctx.fillRect(0,0,canvas.width,canvas.height); ctx.restore(); ctx.save(); applyCameraTransform(); drawLevel(ctx); // particles below
-  particles.forEach(p=>p.draw(ctx)); bullets.forEach(b=>b.draw(ctx)); // draw enemies and player with depth sort
-  const drawables = [...enemies, player]; drawables.sort((a,b)=> (a.x||0) - (b.x||0)); for(const d of drawables){ d.draw(ctx); }
-  // bullet-time reticle
-  if(mouse.right){ ctx.save(); ctx.beginPath(); ctx.lineWidth = 2; ctx.strokeStyle = 'rgba(0,220,200,0.65)'; ctx.arc(mouse.x + world.camX, mouse.y + world.camY, 36, 0, Math.PI*2); ctx.stroke(); ctx.restore(); }
-  // floating texts
-  ctx.save(); for(const f of floating){ ctx.globalAlpha = clamp(f.t/60,0,1); ctx.font = 'bold 16px sans-serif'; ctx.fillStyle = '#fff'; ctx.fillText(f.txt, f.x, f.y); } ctx.restore(); ctx.restore(); drawHUD(); }
-
-function drawHUD(){ ctx.setTransform(1,0,0,1,0,0); // crosshair
-  ctx.beginPath(); ctx.lineWidth = 2; ctx.strokeStyle = 'rgba(0,220,200,0.95)'; ctx.moveTo(mouse.x - 10, mouse.y); ctx.lineTo(mouse.x + 10, mouse.y); ctx.moveTo(mouse.x, mouse.y - 10); ctx.lineTo(mouse.x, mouse.y + 10); ctx.stroke(); ctx.beginPath(); ctx.fillStyle = 'rgba(0,220,200,0.95)'; ctx.arc(mouse.x, mouse.y, 3, 0, Math.PI*2); ctx.fill(); // status
-  ctx.font = '15px sans-serif'; ctx.fillStyle='#fff'; ctx.fillText('Score: ' + score, canvas.width - 160, 28); ctx.fillStyle='#ffd965'; ctx.fillText('Combo: ' + combo + ' (best ' + bestCombo + ')', canvas.width - 360, 28); ctx.fillStyle='#aaa'; ctx.fillText('Level: ' + level.name, canvas.width/2 - 80, 28);
-  for(let i=0;i<5;i++){ ctx.beginPath(); ctx.fillStyle = i<player.hp ? '#ffdb4d' : 'rgba(255,255,255,0.06)'; ctx.roundRectPath(12 + i*26, 12, 20, 12, 4); ctx.fill(); ctx.strokeStyle = 'rgba(0,0,0,0.3)'; ctx.stroke(); }
-  // bullet-time meter
-  ctx.fillStyle = 'rgba(255,255,255,0.06)'; ctx.roundRectPath(12, canvas.height - 28, 180, 12, 6); ctx.fill(); ctx.fillStyle = '#00f2e8'; ctx.fillRect(12, canvas.height - 28, (player.bulletTimeMeter/100)*180, 12);
-}
-
-// input jump binding - immediate response (not physics step) for crispness
-window.addEventListener('keydown', e=>{
-  if(e.code === 'Space') player.performJump();
-  if(e.key.toLowerCase() === 'r') loadLevel(levelIndex);
-  if(e.key.toLowerCase() === 'n') loadLevel(levelIndex+1);
-  if(e.key.toLowerCase() === 'p') loadLevel(levelIndex-1);
-  if(e.key.toLowerCase() === 'k'){ // dash
-    player.dashTimer = 8; const dir = (mouse.x + world.camX < player.x + player.w/2) ? -1 : 1; player.vx += 10 * dir; cameraShake(8); spawnParticles(player.x + player.w/2, player.y + player.h/2, 10, 1.6, 2.6, ['#fff','#aaf'], 3.2, 18);
-  }
-});
-
-// enemy spawn and helpers
-function spawnEnemiesFromLevel(){ enemies.length = 0; for(const s of level.enemySpawns){ enemies.push(new Enemy(s.x, s.y)); } }
-loadLevel(0); // initial
-
-// small helper: platform AABB creation (ensure property names)
-levels.forEach(l=>{ l.platforms = l.platforms.map(p=>({x:p.x,y:p.y,w:p.w,h:p.h})); if(!l.pans) l.pans = []; if(!l.enemySpawns) l.enemySpawns = []; });
-
-/* final polish: show platform debug on console if falling through etc */
-console.log('Loaded FAT physics rewrite. Controls: WASD, Space, K (dash), LMB shoot, RMB bullet-time, N/P levels, R restart.');
-
+loop();
 </script>
 </body>
 </html>
