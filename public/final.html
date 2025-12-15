@@ -2,24 +2,30 @@
 <html>
 <head>
 <meta charset="UTF-8">
-<title>Pedro-Style NYC Alley — Ragdoll Edition</title>
+<title>Pedro-Style Ultimate Demo</title>
 <style>
-html,body{margin:0;background:#0a0a0a;overflow:hidden}
+html,body{margin:0;background:#080808;overflow:hidden}
 canvas{display:block;margin:auto;background:#111}
+#ui{
+  position:fixed;top:10px;left:10px;
+  font-family:monospace;color:#0ff
+}
 </style>
 </head>
 <body>
 <canvas id="c"></canvas>
+<div id="ui"></div>
 <script>
-// ==========================================================
-// CORE
-// ==========================================================
+/* ======================================================
+   CORE
+====================================================== */
 const c=document.getElementById("c"),ctx=c.getContext("2d");
-c.width=1280;c.height=640;
+c.width=1400;c.height=700;
+const ui=document.getElementById("ui");
 
-// ==========================================================
-// INPUT
-// ==========================================================
+/* ======================================================
+   INPUT
+====================================================== */
 const keys={},mouse={x:0,y:0,l:false};
 addEventListener("keydown",e=>keys[e.key.toLowerCase()]=true);
 addEventListener("keyup",e=>keys[e.key.toLowerCase()]=false);
@@ -31,205 +37,269 @@ c.onmousemove=e=>{
 c.onmousedown=()=>mouse.l=true;
 c.onmouseup=()=>mouse.l=false;
 
-// ==========================================================
-// MAP (NYC ALLEY)
-// ==========================================================
+/* ======================================================
+   TIME SCALE (BULLET TIME)
+====================================================== */
+let timeScale=1;
+
+/* ======================================================
+   MAP – NYC ALLEY
+====================================================== */
 const platforms=[
-  {x:-400,y:600,w:2400,h:80},
-  {x:80,y:500,w:260,h:20},
-  {x:420,y:460,w:260,h:20},
-  {x:760,y:420,w:260,h:20},
-  {x:1050,y:380,w:200,h:20},
-  {x:250,y:330,w:180,h:20},
-  {x:620,y:280,w:180,h:20},
+  {x:-400,y:640,w:2600,h:80},
+  {x:100,y:540,w:260,h:20},
+  {x:460,y:500,w:260,h:20},
+  {x:820,y:460,w:260,h:20},
+  {x:1100,y:420,w:220,h:20},
+  {x:300,y:360,w:200,h:20},
+  {x:650,y:300,w:200,h:20},
 ];
 
-// ==========================================================
-// UTILS
-// ==========================================================
-function collideFloor(obj,h){
-  let grounded=false;
+/* ======================================================
+   UTILS
+====================================================== */
+function floorCollide(o,h){
+  let g=false;
   platforms.forEach(p=>{
-    if(obj.x>p.x&&obj.x<p.x+p.w){
-      if(obj.y+h<=p.y+12&&obj.y+h+obj.vy>=p.y){
-        obj.y=p.y-h;
-        obj.vy=0;
-        grounded=true;
+    if(o.x>p.x&&o.x<p.x+p.w){
+      if(o.y+h<=p.y+12&&o.y+h+o.vy>=p.y){
+        o.y=p.y-h;o.vy=0;g=true;
       }
     }
   });
-  return grounded;
+  return g;
 }
 
-// ==========================================================
-// BULLETS
-// ==========================================================
+/* ======================================================
+   CAMERA
+====================================================== */
+let camShake=0;
+function applyCamera(){
+  if(camShake>0){
+    camShake*=0.85;
+    ctx.translate(
+      (Math.random()-.5)*camShake,
+      (Math.random()-.5)*camShake
+    );
+  }
+}
+
+/* ======================================================
+   WEAPONS
+====================================================== */
+const weapons=[
+  {name:"Pistol",rate:7,spread:0.02,pellets:1,speed:20},
+  {name:"Shotgun",rate:25,spread:0.45,pellets:8,speed:17},
+];
+let weaponIndex=0;
+c.onwheel=e=>{
+  weaponIndex=(weaponIndex+(e.deltaY>0?1:-1)+weapons.length)%weapons.length;
+};
+
+/* ======================================================
+   BULLETS
+====================================================== */
 const bullets=[];
 class Bullet{
   constructor(x,y,a,s){
     this.x=x;this.y=y;
     this.vx=Math.cos(a)*s;
     this.vy=Math.sin(a)*s;
-    this.life=50;
+    this.life=60;
   }
-  update(){this.x+=this.vx;this.y+=this.vy;this.life--;}
+  update(){
+    this.x+=this.vx*timeScale;
+    this.y+=this.vy*timeScale;
+    this.life--;
+  }
   draw(){
     ctx.fillStyle="#0ff";
     ctx.fillRect(this.x-2,this.y-2,4,4);
   }
 }
 
-// ==========================================================
-// HUMANOID DRAW
-// ==========================================================
-function drawHuman(x,y,aim){
+/* ======================================================
+   GORE / DEBRIS
+====================================================== */
+const decals=[],chunks=[];
+function splatter(x,y){
+  decals.push({x,y,r:10+Math.random()*12,l:400});
+  for(let i=0;i<4;i++)
+    chunks.push({x,y,vx:(Math.random()-.5)*6,vy:-4});
+}
+
+/* ======================================================
+   HUMANOID DRAW
+====================================================== */
+function drawHuman(x,y,aim,dead=false){
   ctx.save();
   ctx.translate(x,y);
-  ctx.fillStyle="#444";
+
+  // legs
+  ctx.fillStyle="#222";
+  ctx.fillRect(-5,28,4,18);
+  ctx.fillRect(1,28,4,18);
+
+  // torso
+  ctx.fillStyle=dead?"#333":"#444";
   ctx.fillRect(-8,6,16,24);
+
+  // head
   ctx.beginPath();
   ctx.arc(0,-4,7,0,Math.PI*2);
   ctx.fillStyle="#555";
   ctx.fill();
+
+  // arm + gun
   ctx.rotate(aim);
   ctx.fillStyle="#333";
   ctx.fillRect(4,10,14,3);
   ctx.fillStyle="#111";
   ctx.fillRect(18,9,10,5);
+
   ctx.restore();
 }
 
-// ==========================================================
-// PLAYER
-// ==========================================================
-const player={x:100,y:300,vx:0,vy:0,w:20,h:48,ground:false,cd:0};
+/* ======================================================
+   PLAYER
+====================================================== */
+const player={
+  x:120,y:400,vx:0,vy:0,w:20,h:48,
+  g:false,cd:0,combo:0,score:0
+};
 function updatePlayer(){
-  player.vx=((keys.a?-1:0)+(keys.d?1:0))*6;
-  player.vy+=0.8;
-  if(keys[" "]&&player.ground){player.vy=-14;player.ground=false;}
-  player.x+=player.vx;player.y+=player.vy;
-  player.ground=collideFloor(player,player.h);
+  timeScale=keys.shift?0.35:1;
+
+  player.vx=((keys.a?-1:0)+(keys.d?1:0))*7;
+  player.vy+=0.9*timeScale;
+  if(keys[" "]&&player.g){player.vy=-15;player.g=false;}
+
+  player.x+=player.vx*timeScale;
+  player.y+=player.vy*timeScale;
+  player.g=floorCollide(player,player.h);
 
   player.cd--;
   if(mouse.l&&player.cd<=0){
+    const w=weapons[weaponIndex];
     const cx=player.x+player.w/2,cy=player.y+14;
-    const a=Math.atan2(mouse.y-cy,mouse.x-cx);
-    bullets.push(new Bullet(cx,cy,a,18));
-    player.cd=7;
+    const ang=Math.atan2(mouse.y-cy,mouse.x-cx);
+    for(let i=0;i<w.pellets;i++)
+      bullets.push(new Bullet(
+        cx,cy,
+        ang+(Math.random()-.5)*w.spread,
+        w.speed
+      ));
+    player.cd=w.rate;
+    camShake=8;
   }
 }
 
-// ==========================================================
-// RAGDOLL
-// ==========================================================
-class Ragdoll{
-  constructor(x,y,impulse){
-    this.parts=[
-      {x,y,vx:impulse.x,vy:impulse.y,r:0},        // torso
-      {x,y-14,vx:impulse.x*.8,vy:impulse.y-.5,r:0}, // head
-      {x-6,y+18,vx:impulse.x-.5,vy:impulse.y,r:0}, // leg
-      {x+6,y+18,vx:impulse.x+.5,vy:impulse.y,r:0},
-    ];
-  }
-  update(){
-    this.parts.forEach(p=>{
-      p.vy+=0.7;
-      p.x+=p.vx;
-      p.y+=p.vy;
-      collideFloor(p,8);
-      p.vx*=0.98;
-    });
-  }
-  draw(){
-    ctx.fillStyle="#333";
-    this.parts.forEach(p=>{
-      ctx.save();
-      ctx.translate(p.x,p.y);
-      ctx.rotate(p.r);
-      ctx.fillRect(-4,-4,8,8);
-      ctx.restore();
-    });
-  }
-}
-
-// ==========================================================
-// ENEMY
-// ==========================================================
+/* ======================================================
+   ENEMY
+====================================================== */
 class Enemy{
   constructor(x,y){
     this.x=x;this.y=y;
-    this.vx=1.2;this.vy=0;
-    this.dir=1;
-    this.state="patrol";
-    this.dead=false;
-    this.ragdoll=null;
-    this.patrol=[x-100,x+100];
+    this.vx=1.3;this.vy=0;
+    this.dir=1;this.dead=false;
+    this.patrol=[x-120,x+120];
   }
   update(){
     if(this.dead){
-      this.ragdoll.update();
+      this.vy+=0.8*timeScale;
+      this.y+=this.vy*timeScale;
+      floorCollide(this,48);
       return;
     }
 
-    // AI
-    if(Math.abs(player.x-this.x)<260) this.state="attack";
-    else this.state="patrol";
+    const dx=player.x-this.x;
+    if(Math.abs(dx)<300) this.dir=Math.sign(dx)||1;
 
-    if(this.state==="patrol"){
-      this.x+=this.vx*this.dir;
-      if(this.x<this.patrol[0]||this.x>this.patrol[1])this.dir*=-1;
-    }
+    this.x+=this.vx*this.dir*timeScale;
+    if(this.x<this.patrol[0]||this.x>this.patrol[1])this.dir*=-1;
 
-    this.vy+=0.6;
-    this.y+=this.vy;
-    collideFloor(this,48);
+    this.vy+=0.7*timeScale;
+    this.y+=this.vy*timeScale;
+    floorCollide(this,48);
   }
   hit(b){
     this.dead=true;
-    this.ragdoll=new Ragdoll(
-      this.x,this.y,
-      {x:b.vx*.2,y:b.vy*.2}
-    );
+    splatter(b.x,b.y);
+    player.combo++;
+    player.score+=100*player.combo;
+    camShake=12;
   }
   draw(){
-    if(this.dead) this.ragdoll.draw();
-    else drawHuman(this.x,this.y,
-      Math.atan2(player.y-this.y,player.x-this.x));
+    drawHuman(
+      this.x,this.y,
+      Math.atan2(player.y-this.y,player.x-this.x),
+      this.dead
+    );
   }
 }
-
 const enemies=[
-  new Enemy(520,440),
-  new Enemy(820,400),
-  new Enemy(1100,360)
+  new Enemy(500,480),
+  new Enemy(800,440),
+  new Enemy(1100,400)
 ];
 
-// ==========================================================
-// LOOP
-// ==========================================================
+/* ======================================================
+   LOOP
+====================================================== */
 function loop(){
   ctx.clearRect(0,0,c.width,c.height);
+  ctx.save();
+  applyCamera();
 
+  // background
   ctx.fillStyle="#1a1a1a";
   platforms.forEach(p=>ctx.fillRect(p.x,p.y,p.w,p.h));
+
+  // decals
+  decals.forEach(d=>{
+    ctx.fillStyle=`rgba(90,0,0,${d.l/400})`;
+    ctx.beginPath();
+    ctx.arc(d.x,d.y,d.r,0,Math.PI*2);
+    ctx.fill();
+    d.l--;
+  });
 
   updatePlayer();
   enemies.forEach(e=>e.update());
 
   for(let i=bullets.length-1;i>=0;i--){
-    const b=bullets[i];b.update();
+    const b=bullets[i];
+    b.update();
     enemies.forEach(e=>{
-      if(!e.dead && b.x>e.x-8 && b.x<e.x+8 && b.y>e.y && b.y<e.y+48){
-        e.hit(b);b.life=0;
+      if(!e.dead &&
+        b.x>e.x-8&&b.x<e.x+8&&
+        b.y>e.y&&b.y<e.y+48){
+        e.hit(b);
+        b.life=0;
       }
     });
     if(b.life<=0) bullets.splice(i,1);
   }
 
   bullets.forEach(b=>b.draw());
+  chunks.forEach(c=>{
+    c.vy+=0.6;
+    c.x+=c.vx;c.y+=c.vy;
+    ctx.fillStyle="#400";
+    ctx.fillRect(c.x,c.y,6,6);
+  });
   enemies.forEach(e=>e.draw());
-  drawHuman(player.x,player.y,
-    Math.atan2(mouse.y-(player.y+14),mouse.x-(player.x+10)));
+  drawHuman(
+    player.x,player.y,
+    Math.atan2(mouse.y-(player.y+14),mouse.x-(player.x+10))
+  );
+
+  ctx.restore();
+
+  ui.innerHTML=
+    `WEAPON: ${weapons[weaponIndex].name}<br>`+
+    `COMBO: x${player.combo}<br>`+
+    `SCORE: ${player.score}`;
 
   requestAnimationFrame(loop);
 }
@@ -237,3 +307,4 @@ loop();
 </script>
 </body>
 </html>
+
