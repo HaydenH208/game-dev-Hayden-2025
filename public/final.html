@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8">
-<title>Pedro-Style FAT Demo</title>
+<title>Pedro-Style FAT Demo (Stylized Gore)</title>
 <style>
 html,body{margin:0;background:#111;overflow:hidden}
 canvas{display:block;margin:auto;background:#1a1a1a}
@@ -55,13 +55,44 @@ function roundRect(ctx,x,y,w,h,r){
 }
 
 // ==========================================================
-// WORLD / LEVEL
+// LEVEL
 // ==========================================================
 const platforms=[
   {x:0,y:540,w:2000,h:60},
   {x:300,y:420,w:300,h:20},
   {x:700,y:330,w:250,h:20}
 ];
+
+// ==========================================================
+// DECALS (BLOOD SHADOWS)
+// ==========================================================
+const decals=[];
+function spawnDecal(x,y){
+  decals.push({x,y,r:10+Math.random()*12,life:400});
+}
+
+// ==========================================================
+// PARTICLES (STYLIZED BLOOD)
+// ==========================================================
+const particles=[];
+class Particle{
+  constructor(x,y){
+    this.x=x;this.y=y;
+    this.vx=(Math.random()-.5)*7;
+    this.vy=(Math.random()-.8)*7;
+    this.life=40;
+  }
+  update(){
+    this.vy+=0.4;
+    this.x+=this.vx;
+    this.y+=this.vy;
+    this.life--;
+  }
+  draw(){
+    ctx.fillStyle="rgba(120,0,0,.8)";
+    ctx.fillRect(this.x,this.y,3,3);
+  }
+}
 
 // ==========================================================
 // BULLETS
@@ -71,8 +102,9 @@ class Bullet{
     this.x=x;this.y=y;
     this.vx=Math.cos(a)*18;
     this.vy=Math.sin(a)*18;
-    this.life=60;
     this.enemy=enemy;
+    this.life=60;
+    this.power=1;
   }
   update(){
     this.x+=this.vx;
@@ -98,11 +130,9 @@ class Player{
     this.cooldown=0;
   }
   update(){
-    const slow = keys["shift"] ? 0.25 : 1;
-
     let dir=(keys["a"]?-1:0)+(keys["d"]?1:0);
-    this.vx=dir*6*slow;
-    this.vy+=0.8*slow;
+    this.vx=dir*6;
+    this.vy+=0.8;
 
     if(keys[" "]&&this.onGround){
       this.vy=-14;
@@ -136,46 +166,90 @@ class Player{
 const player=new Player();
 
 // ==========================================================
-// ENEMY
+// ENEMY (DAMAGE, LIMBS, RAGDOLL-LITE)
 // ==========================================================
 class Enemy{
   constructor(x,y){
     this.x=x;this.y=y;
     this.w=30;this.h=60;
-    this.vx=0;this.vy=0;
-    this.state="idle";
-    this.cooldown=0;
     this.dead=false;
-    this.fade=40;
-    this.deathRot=(Math.random()-.5)*0.6;
+    this.vy=0;
+    this.rot=(Math.random()-.5)*0.8;
+
+    this.parts={head:true,left:true,right:true};
+
+    this.body=document.createElement("canvas");
+    this.body.width=60;
+    this.body.height=100;
+    this.bctx=this.body.getContext("2d");
+    this.redraw();
   }
+
+  redraw(){
+    const c=this.bctx;
+    c.clearRect(0,0,60,100);
+
+    c.fillStyle="#8b2a2a";
+    roundRect(c,18,25,24,45,6);
+    c.fill();
+
+    if(this.parts.head){
+      c.beginPath();
+      c.arc(30,10,9,0,Math.PI*2);
+      c.fillStyle="#b33";
+      c.fill();
+    }
+
+    c.fillStyle="#8b2a2a";
+    if(this.parts.left) c.fillRect(8,35,10,30);
+    if(this.parts.right) c.fillRect(42,35,10,30);
+  }
+
+  hit(x,y){
+    const ly=y-this.y;
+
+    if(ly<15 && this.parts.head){
+      this.parts.head=false;
+      this.dead=true;
+    }else if(ly<45){
+      this.parts[Math.random()<0.5?"left":"right"]=false;
+    }else{
+      this.dead=true;
+    }
+
+    this.bctx.globalCompositeOperation="destination-out";
+    this.bctx.beginPath();
+    this.bctx.arc(x-this.x+30,y-this.y,10+Math.random()*6,0,Math.PI*2);
+    this.bctx.fill();
+    this.bctx.globalCompositeOperation="source-over";
+
+    for(let i=0;i<14;i++) particles.push(new Particle(x,y));
+    spawnDecal(x,y);
+    this.redraw();
+  }
+
   update(){
     if(this.dead){
-      this.fade--;
+      this.vy+=0.6;
+      this.y+=this.vy;
       return;
     }
 
     const dx=player.x-this.x;
     const dy=player.y-this.y;
-    const d=Math.hypot(dx,dy);
-
-    switch(this.state){
-      case "idle":
-        if(d<450) this.state="aim";
-      break;
-      case "aim":
-        if(d<350) this.state="shoot";
-      break;
-      case "shoot":
-        this.cooldown--;
-        if(this.cooldown<=0){
-          const a=Math.atan2(dy,dx);
-          bullets.push(new Bullet(this.x+15,this.y+25,a,true));
-          this.cooldown=60;
-        }
-        if(d>450) this.state="idle";
-      break;
+    if(Math.hypot(dx,dy)<400){
+      if(Math.random()<0.01){
+        bullets.push(new Bullet(this.x+15,this.y+30,Math.atan2(dy,dx),true));
+      }
     }
+  }
+
+  draw(){
+    ctx.save();
+    ctx.translate(this.x+15,this.y+30);
+    if(this.dead) ctx.rotate(this.rot);
+    ctx.drawImage(this.body,-30,-50);
+    ctx.restore();
   }
 }
 const enemies=[
@@ -184,62 +258,21 @@ const enemies=[
 ];
 
 // ==========================================================
-// HUMAN DRAW
-// ==========================================================
-function drawHuman(ent,isEnemy=false){
-  const cx=ent.x+ent.w/2;
-  const cy=ent.y+ent.h*0.45;
-  const ax=isEnemy?player.x+15:mouse.x;
-  const ay=isEnemy?player.y+25:mouse.y;
-  const ang=Math.atan2(ay-cy,ax-cx);
-
-  ctx.save();
-  ctx.translate(cx,cy);
-  if(ent.dead) ctx.rotate(ent.deathRot);
-
-  ctx.fillStyle=isEnemy?"#8b2a2a":"#f5d76e";
-  roundRect(ctx,-12,-20,24,42,6);
-  ctx.fill();
-
-  ctx.beginPath();
-  ctx.arc(0,-34,9,0,Math.PI*2);
-  ctx.fillStyle=isEnemy?"#b33":"#ffeaa6";
-  ctx.fill();
-
-  ctx.save();
-  ctx.rotate(ang);
-  ctx.strokeStyle="#111";
-  ctx.lineWidth=4;
-  ctx.lineCap="round";
-  ctx.beginPath();
-  ctx.moveTo(6,-10);
-  ctx.lineTo(24,-4);
-  ctx.stroke();
-  ctx.fillStyle="#333";
-  ctx.fillRect(24,-7,12,5);
-  ctx.restore();
-
-  ctx.strokeStyle="#111";
-  ctx.beginPath();
-  ctx.moveTo(-6,20);
-  ctx.lineTo(-8,42);
-  ctx.stroke();
-  ctx.beginPath();
-  ctx.moveTo(6,20);
-  ctx.lineTo(8,42);
-  ctx.stroke();
-
-  ctx.restore();
-}
-
-// ==========================================================
 // LOOP
 // ==========================================================
 function loop(){
   ctx.clearRect(0,0,canvas.width,canvas.height);
 
   ctx.fillStyle="#222";
-  for(const p of platforms) ctx.fillRect(p.x,p.y,p.w,p.h);
+  platforms.forEach(p=>ctx.fillRect(p.x,p.y,p.w,p.h));
+
+  decals.forEach(d=>{
+    ctx.fillStyle=`rgba(80,0,0,${d.life/400})`;
+    ctx.beginPath();
+    ctx.arc(d.x,d.y,d.r,0,Math.PI*2);
+    ctx.fill();
+    d.life--;
+  });
 
   player.update();
   enemies.forEach(e=>e.update());
@@ -252,23 +285,21 @@ function loop(){
     if(!b.enemy){
       enemies.forEach(e=>{
         if(!e.dead &&
-           b.x>e.x&&b.x<e.x+e.w&&
-           b.y>e.y&&b.y<e.y+e.h){
-          e.dead=true;
+           b.x>e.x && b.x<e.x+e.w &&
+           b.y>e.y && b.y<e.y+e.h){
+          e.hit(b.x,b.y);
+          b.life=0;
         }
       });
     }
   }
 
+  particles.forEach(p=>p.update());
+  for(let i=particles.length-1;i>=0;i--) if(particles[i].life<=0) particles.splice(i,1);
+
   bullets.forEach(b=>b.draw());
-  drawHuman(player,false);
-  enemies.forEach(e=>{
-    if(e.dead){
-      ctx.globalAlpha=e.fade/40;
-      drawHuman(e,true);
-      ctx.globalAlpha=1;
-    }else drawHuman(e,true);
-  });
+  enemies.forEach(e=>e.draw());
+  particles.forEach(p=>p.draw());
 
   requestAnimationFrame(loop);
 }
