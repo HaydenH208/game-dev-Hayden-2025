@@ -1,324 +1,245 @@
 <!DOCTYPE html>
-<html lang="en">
+<html>
 <head>
 <meta charset="UTF-8">
-<title>Pedro-Style Industrial Demo</title>
+<title>Pedro-Style NYC Alley Demo</title>
 <style>
-html,body{margin:0;background:#0e0e0e;overflow:hidden}
-canvas{display:block;margin:auto;background:#151515}
+html,body{margin:0;background:#0b0b0b;overflow:hidden}
+canvas{display:block;margin:auto;background:#111}
 </style>
 </head>
 <body>
 <canvas id="c"></canvas>
-
 <script>
-// ==========================================================
-// CANVAS
-// ==========================================================
-const canvas=document.getElementById("c");
-const ctx=canvas.getContext("2d");
-canvas.width=1200;
-canvas.height=600;
+/* =========================================================
+   CORE
+========================================================= */
+const canvas=c=document.getElementById("c");
+const ctx=c.getContext("2d");
+c.width=1280; c.height=640;
 
-// ==========================================================
-// INPUT
-// ==========================================================
-const keys={};
+/* =========================================================
+   INPUT
+========================================================= */
+const keys={},mouse={x:0,y:0,l:false};
 addEventListener("keydown",e=>keys[e.key.toLowerCase()]=true);
 addEventListener("keyup",e=>keys[e.key.toLowerCase()]=false);
-
-const mouse={x:0,y:0,l:false,r:false};
-canvas.onmousemove=e=>{
-  const b=canvas.getBoundingClientRect();
-  mouse.x=e.clientX-b.left;
-  mouse.y=e.clientY-b.top;
+c.onmousemove=e=>{
+  const r=c.getBoundingClientRect();
+  mouse.x=e.clientX-r.left;
+  mouse.y=e.clientY-r.top;
 };
-canvas.onmousedown=e=>{
-  if(e.button===0) mouse.l=true;
-  if(e.button===2) mouse.r=true;
+c.onmousedown=()=>mouse.l=true;
+c.onmouseup=()=>mouse.l=false;
+c.onwheel=e=>{
+  player.weapon=(player.weapon+ (e.deltaY>0?1:-1)+weapons.length)%weapons.length;
 };
-canvas.onmouseup=e=>{
-  if(e.button===0) mouse.l=false;
-  if(e.button===2) mouse.r=false;
-};
-canvas.oncontextmenu=e=>e.preventDefault();
 
-// ==========================================================
-// UTILS
-// ==========================================================
-function rr(ctx,x,y,w,h,r){
-  ctx.beginPath();
-  ctx.moveTo(x+r,y);
-  ctx.lineTo(x+w-r,y);
-  ctx.quadraticCurveTo(x+w,y,x+w,y+r);
-  ctx.lineTo(x+w,y+h-r);
-  ctx.quadraticCurveTo(x+w,y+h,x+w-r,y+h);
-  ctx.lineTo(x+r,y+h);
-  ctx.quadraticCurveTo(x,y+h,x,y+h-r);
-  ctx.lineTo(x,y+r);
-  ctx.quadraticCurveTo(x,y,x+r,y);
-  ctx.closePath();
-}
-
-// ==========================================================
-// INDUSTRIAL ALLEY MAP
-// ==========================================================
+/* =========================================================
+   MAP – NYC ALLEY
+========================================================= */
 const platforms=[
-  {x:-200,y:560,w:2000,h:60}, // ground
-  {x:200,y:450,w:200,h:20},
-  {x:480,y:380,w:220,h:20},
-  {x:780,y:320,w:240,h:20},
-  {x:350,y:260,w:180,h:20},
-  {x:900,y:460,w:180,h:20},
-  {x:50,y:350,w:140,h:20},
+  {x:-300,y:600,w:2000,h:60},
+  {x:0,y:520,w:300,h:20},
+  {x:350,y:480,w:260,h:20},
+  {x:700,y:440,w:260,h:20},
+  {x:1050,y:400,w:220,h:20},
+  {x:200,y:360,w:180,h:20},
+  {x:600,y:300,w:180,h:20},
 ];
 
-// ==========================================================
-// DECALS & PARTICLES
-// ==========================================================
-const decals=[],particles=[];
-function decal(x,y){
-  decals.push({x,y,r:12+Math.random()*10,l:350});
-}
-class Particle{
-  constructor(x,y){
-    this.x=x;this.y=y;
-    this.vx=(Math.random()-.5)*6;
-    this.vy=(Math.random()-.7)*6;
-    this.l=35;
-  }
-  update(){
-    this.vy+=0.4;
-    this.x+=this.vx;
-    this.y+=this.vy;
-    this.l--;
-  }
-  draw(){
-    ctx.fillStyle="rgba(120,0,0,.8)";
-    ctx.fillRect(this.x,this.y,3,3);
-  }
-}
+const props=[
+  {x:80,y:480,w:60,h:40,type:"dumpster"},
+  {x:430,y:450,w:40,h:30,type:"ac"},
+  {x:760,y:410,w:40,h:30,type:"ac"},
+];
 
-// ==========================================================
-// BULLETS
-// ==========================================================
+/* =========================================================
+   WEAPONS
+========================================================= */
+const weapons=[
+  {name:"pistol",rate:8,spread:0.03,pellets:1,speed:18},
+  {name:"shotgun",rate:22,spread:0.35,pellets:7,speed:16}
+];
+
+/* =========================================================
+   BULLETS
+========================================================= */
 const bullets=[];
 class Bullet{
-  constructor(x,y,a,power,enemy=false){
+  constructor(x,y,a,s){
     this.x=x;this.y=y;
-    this.vx=Math.cos(a)*18;
-    this.vy=Math.sin(a)*18;
-    this.enemy=enemy;
+    this.vx=Math.cos(a)*s;
+    this.vy=Math.sin(a)*s;
     this.life=50;
-    this.power=power;
   }
   update(){this.x+=this.vx;this.y+=this.vy;this.life--;}
   draw(){
-    ctx.fillStyle=this.enemy?"#ff5555":"#00ffff";
+    ctx.fillStyle="#0ff";
     ctx.fillRect(this.x-2,this.y-2,4,4);
   }
 }
 
-// ==========================================================
-// PLAYER
-// ==========================================================
-class Player{
-  constructor(){
-    this.x=80;this.y=300;
-    this.w=30;this.h=60;
-    this.vx=0;this.vy=0;
-    this.g=false;
-    this.cd=0;
-  }
-  update(){
-    this.vx=((keys.a?-1:0)+(keys.d?1:0))*6;
-    this.vy+=0.8;
-    if(keys[" "]&&this.g){this.vy=-14;this.g=false;}
-    this.x+=this.vx;this.y+=this.vy;
+/* =========================================================
+   HUMANOID DRAW
+========================================================= */
+function drawHuman(x,y,flip,aim,dead=false){
+  ctx.save();
+  ctx.translate(x,y);
+  if(flip) ctx.scale(-1,1);
 
-    this.g=false;
-    platforms.forEach(p=>{
-      if(this.x+this.w>p.x && this.x<p.x+p.w){
-        if(this.y+this.h<=p.y+10 && this.y+this.h+this.vy>=p.y){
-          this.y=p.y-this.h;
-          this.vy=0;
-          this.g=true;
-        }
+  // legs
+  ctx.fillStyle="#222";
+  ctx.fillRect(-6,28,4,18);
+  ctx.fillRect(2,28,4,18);
+
+  // torso
+  ctx.fillStyle=dead?"#333":"#444";
+  ctx.fillRect(-8,8,16,24);
+
+  // head
+  ctx.beginPath();
+  ctx.arc(0,0,7,0,Math.PI*2);
+  ctx.fillStyle="#555";
+  ctx.fill();
+
+  // arm + gun
+  ctx.rotate(aim);
+  ctx.fillStyle="#333";
+  ctx.fillRect(4,10,14,3); // arm
+  ctx.fillStyle="#111";
+  ctx.fillRect(14,9,10,5); // gun slide
+  ctx.fillRect(22,10,4,3); // barrel
+
+  ctx.restore();
+}
+
+/* =========================================================
+   PLAYER
+========================================================= */
+const player={
+  x:100,y:300,vx:0,vy:0,w:20,h:48,ground:false,
+  weapon:0,cd:0
+};
+function updatePlayer(){
+  player.vx=((keys.a?-1:0)+(keys.d?1:0))*6;
+  player.vy+=0.8;
+  if(keys[" "]&&player.ground){player.vy=-14;player.ground=false;}
+  player.x+=player.vx; player.y+=player.vy;
+
+  player.ground=false;
+  platforms.forEach(p=>{
+    if(player.x+player.w>p.x&&player.x<p.x+p.w){
+      if(player.y+player.h<=p.y+10&&player.y+player.h+player.vy>=p.y){
+        player.y=p.y-player.h;player.vy=0;player.ground=true;
       }
-    });
+    }
+  });
 
-    const cx=this.x+this.w/2;
-    const cy=this.y+this.h*0.35;
+  player.cd--;
+  if(mouse.l&&player.cd<=0){
+    const w=weapons[player.weapon];
+    const cx=player.x+player.w/2,cy=player.y+14;
     const ang=Math.atan2(mouse.y-cy,mouse.x-cx);
-
-    this.cd--;
-    if(mouse.l && this.cd<=0){
-      bullets.push(new Bullet(cx,cy,ang,1,false));
-      this.cd=6;
-    }
-
-    // SHOTGUN
-    if(mouse.r && this.cd<=0){
-      for(let i=0;i<7;i++){
-        bullets.push(new Bullet(
-          cx,cy,
-          ang+(Math.random()-.5)*0.35,
-          0.6,false
-        ));
-      }
-      this.cd=20;
-    }
-  }
-  draw(){
-    ctx.fillStyle="#ccc";
-    rr(ctx,this.x,this.y,this.w,this.h,6);
-    ctx.fill();
+    for(let i=0;i<w.pellets;i++)
+      bullets.push(new Bullet(
+        cx,cy,ang+(Math.random()-.5)*w.spread,w.speed
+      ));
+    player.cd=w.rate;
   }
 }
-const player=new Player();
 
-// ==========================================================
-// ENEMY
-// ==========================================================
+/* =========================================================
+   ENEMY AI
+========================================================= */
 class Enemy{
   constructor(x,y){
     this.x=x;this.y=y;
-    this.w=32;this.h=64;
-    this.vy=0;
+    this.vx=1.2;this.vy=0;
+    this.state="patrol";
+    this.dir=1;
     this.dead=false;
-
-    this.parts={head:true,l:true,r:true};
-
-    this.body=document.createElement("canvas");
-    this.body.width=70;this.body.height=120;
-    this.b=this.body.getContext("2d");
-    this.redraw();
+    this.cool=0;
+    this.patrol=[x-80,x+80];
   }
-
-  redraw(){
-    const c=this.b;
-    c.clearRect(0,0,70,120);
-
-    // legs
-    c.fillStyle="#222";
-    c.fillRect(28,70,8,35);
-    c.fillRect(36,70,8,35);
-
-    // torso
-    c.fillStyle="#444";
-    rr(c,22,30,26,40,6);
-    c.fill();
-
-    // arms
-    c.fillStyle="#333";
-    if(this.parts.l) c.fillRect(10,34,10,28);
-    if(this.parts.r) c.fillRect(50,34,10,28);
-
-    // head
-    if(this.parts.head){
-      c.beginPath();
-      c.arc(35,16,10,0,Math.PI*2);
-      c.fillStyle="#555";
-      c.fill();
-    }
-  }
-
-  hit(x,y,power){
-    const ly=y-this.y;
-    if(ly<18 && this.parts.head){this.parts.head=false;this.dead=true;}
-    else if(ly<45){this.parts[Math.random()<0.5?"l":"r"]=false;}
-    else this.dead=true;
-
-    this.b.globalCompositeOperation="destination-out";
-    this.b.beginPath();
-    this.b.arc(x-this.x+35,y-this.y,10+power*6,0,Math.PI*2);
-    this.b.fill();
-    this.b.globalCompositeOperation="source-over";
-
-    for(let i=0;i<10;i++) particles.push(new Particle(x,y));
-    decal(x,y);
-    this.redraw();
-  }
-
   update(){
-    this.vy+=0.7;
-    this.y+=this.vy;
+    if(this.dead){
+      this.vy+=0.7; this.y+=this.vy;
+    } else {
+      const dx=player.x-this.x;
+      if(Math.abs(dx)<240) this.state="attack";
+      else this.state="patrol";
 
+      if(this.state==="patrol"){
+        this.x+=this.vx*this.dir;
+        if(this.x<this.patrol[0]||this.x>this.patrol[1]) this.dir*=-1;
+      }
+
+      if(this.state==="attack"){
+        this.dir=dx>0?1:-1;
+        this.cool--;
+        if(this.cool<=0){
+          bullets.push(new Bullet(
+            this.x,this.y+10,
+            Math.atan2(player.y-this.y,dx),14
+          ));
+          this.cool=40;
+        }
+      }
+    }
+
+    this.vy+=0.6; this.y+=this.vy;
     platforms.forEach(p=>{
-      if(this.x+this.w>p.x && this.x<p.x+p.w){
-        if(this.y+this.h<=p.y+10 && this.y+this.h>=p.y){
-          this.y=p.y-this.h;
-          this.vy=0;
+      if(this.x>p.x&&this.x<p.x+p.w){
+        if(this.y+48<=p.y+10&&this.y+48>=p.y){
+          this.y=p.y-48; this.vy=0;
         }
       }
     });
-
-    if(!this.dead){
-      const dx=player.x-this.x;
-      const dy=player.y-this.y;
-      if(Math.hypot(dx,dy)<420 && Math.random()<0.012){
-        bullets.push(new Bullet(
-          this.x+16,this.y+30,
-          Math.atan2(dy,dx),1,true
-        ));
-      }
-    }
   }
-
   draw(){
-    ctx.drawImage(this.body,this.x-19,this.y-20);
+    drawHuman(this.x,this.y,this.dir<0,
+      Math.atan2(player.y-this.y,player.x-this.x),this.dead);
   }
 }
 
 const enemies=[
-  new Enemy(420,380),
-  new Enemy(680,310),
-  new Enemy(980,250)
+  new Enemy(500,420),
+  new Enemy(820,380),
+  new Enemy(1100,350)
 ];
 
-// ==========================================================
-// LOOP
-// ==========================================================
+/* =========================================================
+   LOOP
+========================================================= */
 function loop(){
-  ctx.clearRect(0,0,canvas.width,canvas.height);
+  ctx.clearRect(0,0,c.width,c.height);
 
   // background
-  ctx.fillStyle="#1f1f1f";
+  ctx.fillStyle="#1a1a1a";
   platforms.forEach(p=>ctx.fillRect(p.x,p.y,p.w,p.h));
-
-  decals.forEach(d=>{
-    ctx.fillStyle=`rgba(80,0,0,${d.l/350})`;
-    ctx.beginPath();
-    ctx.arc(d.x,d.y,d.r,0,Math.PI*2);
-    ctx.fill();
-    d.l--;
+  props.forEach(o=>{
+    ctx.fillStyle=o.type==="dumpster"?"#2b3":"#333";
+    ctx.fillRect(o.x,o.y,o.w,o.h);
   });
 
-  player.update();
+  updatePlayer();
   enemies.forEach(e=>e.update());
 
   for(let i=bullets.length-1;i>=0;i--){
-    const b=bullets[i];
-    b.update();
+    const b=bullets[i]; b.update();
+    enemies.forEach(e=>{
+      if(!e.dead && b.x>e.x-8&&b.x<e.x+8&&b.y>e.y&&b.y<e.y+48){
+        e.dead=true; b.life=0;
+      }
+    });
     if(b.life<=0) bullets.splice(i,1);
-
-    if(!b.enemy){
-      enemies.forEach(e=>{
-        if(b.x>e.x&&b.x<e.x+e.w&&b.y>e.y&&b.y<e.y+e.h){
-          e.hit(b.x,b.y,b.power);
-          b.life=0;
-        }
-      });
-    }
   }
-
-  particles.forEach(p=>p.update());
-  for(let i=particles.length-1;i>=0;i--) if(particles[i].l<=0) particles.splice(i,1);
 
   bullets.forEach(b=>b.draw());
   enemies.forEach(e=>e.draw());
-  particles.forEach(p=>p.draw());
-  player.draw();
+  drawHuman(player.x,player.y,false,
+    Math.atan2(mouse.y-(player.y+14),mouse.x-(player.x+10)));
 
   requestAnimationFrame(loop);
 }
