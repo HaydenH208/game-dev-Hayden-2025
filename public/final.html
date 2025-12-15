@@ -1,399 +1,226 @@
 <!DOCTYPE html>
-<html>
+<html lang="en">
 <head>
-<meta charset="UTF-8">
-<title>Pedro-Style Ultimate Demo</title>
+<meta charset="UTF-8" />
+<title>Pedro‑Style Ragdoll Demo (Single File)</title>
 <style>
-html,body{margin:0;background:#080808;overflow:hidden}
+html,body{margin:0;background:#070707;overflow:hidden}
 canvas{display:block;margin:auto;background:#111}
-#ui{
-  position:fixed;top:10px;left:10px;
-  font-family:monospace;color:#0ff
-}
+#ui{position:fixed;top:10px;left:10px;font-family:monospace;color:#0ff;font-size:14px}
 </style>
 </head>
 <body>
 <canvas id="c"></canvas>
 <div id="ui"></div>
 <script>
-/* ======================================================
-   CORE
-====================================================== */
-const c=document.getElementById("c"),ctx=c.getContext("2d");
-c.width=1400;c.height=700;
-const ui=document.getElementById("ui");
+// ======================================================
+// CANVAS
+// ======================================================
+const c = document.getElementById('c');
+const ctx = c.getContext('2d');
+c.width = 1400; c.height = 700;
+const ui = document.getElementById('ui');
 
-/* ======================================================
-   INPUT
-====================================================== */
-const keys={},mouse={x:0,y:0,l:false};
-addEventListener("keydown",e=>keys[e.key.toLowerCase()]=true);
-addEventListener("keyup",e=>keys[e.key.toLowerCase()]=false);
-c.onmousemove=e=>{
-  const r=c.getBoundingClientRect();
-  mouse.x=e.clientX-r.left;
-  mouse.y=e.clientY-r.top;
-};
+// ======================================================
+// INPUT
+// ======================================================
+const keys = {};
+const mouse = {x:0,y:0,l:false};
+addEventListener('keydown',e=>keys[e.key.toLowerCase()]=true);
+addEventListener('keyup',e=>keys[e.key.toLowerCase()]=false);
+c.onmousemove=e=>{const r=c.getBoundingClientRect();mouse.x=e.clientX-r.left;mouse.y=e.clientY-r.top;};
 c.onmousedown=()=>mouse.l=true;
 c.onmouseup=()=>mouse.l=false;
 
-/* ======================================================
-   TIME SCALE (BULLET TIME)
-====================================================== */
-let timeScale=1;
+// ======================================================
+// TIME
+// ======================================================
+let timeScale = 1;
 
-/* ======================================================
-   MAP – NYC ALLEY
-====================================================== */
-const platforms=[
-  {x:-400,y:640,w:2600,h:80},
-  {x:100,y:540,w:260,h:20},
-  {x:460,y:500,w:260,h:20},
-  {x:820,y:460,w:260,h:20},
-  {x:1100,y:420,w:220,h:20},
-  {x:300,y:360,w:200,h:20},
-  {x:650,y:300,w:200,h:20},
+// ======================================================
+// MAP (ALLEY / INDUSTRIAL)
+// ======================================================
+const platforms = [
+  {x:-500,y:640,w:2600,h:80},
+  {x:180,y:520,w:300,h:18},
+  {x:540,y:470,w:260,h:18},
+  {x:900,y:420,w:260,h:18},
+  {x:1150,y:360,w:220,h:18}
 ];
 
-/* ======================================================
-   UTILS
-====================================================== */
-function floorCollide(o,h){
-  let g=false;
-  platforms.forEach(p=>{
-    if(o.x>p.x&&o.x<p.x+p.w){
-      if(o.y+h<=p.y+12&&o.y+h+o.vy>=p.y){
-        o.y=p.y-h;o.vy=0;g=true;
-      }
+function solveFloor(p){
+  platforms.forEach(pl=>{
+    if(p.x>pl.x && p.x<pl.x+pl.w && p.y>pl.y){
+      p.y = pl.y;
+      p.oldy = p.y;
     }
   });
-  return g;
 }
 
-/* ======================================================
-   CAMERA
-====================================================== */
-let camShake=0;
+// ======================================================
+// CAMERA
+// ======================================================
+let camShake = 0;
 function applyCamera(){
   if(camShake>0){
     camShake*=0.85;
-    ctx.translate(
-      (Math.random()-.5)*camShake,
-      (Math.random()-.5)*camShake
-    );
+    ctx.translate((Math.random()-.5)*camShake,(Math.random()-.5)*camShake);
   }
 }
 
-/* ======================================================
-   WEAPONS
-====================================================== */
-const weapons=[
-  {name:"Pistol",rate:7,spread:0.02,pellets:1,speed:20},
-  {name:"Shotgun",rate:25,spread:0.45,pellets:8,speed:17},
+// ======================================================
+// WEAPONS
+// ======================================================
+const weapons = [
+  {name:'Pistol',rate:7,spread:0.03,pellets:1,speed:22},
+  {name:'Shotgun',rate:30,spread:0.55,pellets:9,speed:18}
 ];
-let weaponIndex=0;
+let weaponIndex = 0;
 c.onwheel=e=>{
   weaponIndex=(weaponIndex+(e.deltaY>0?1:-1)+weapons.length)%weapons.length;
 };
 
-/* ======================================================
-   BULLETS
-====================================================== */
-const bullets=[];
+// ======================================================
+// BULLETS
+// ======================================================
+const bullets = [];
 class Bullet{
-  constructor(x,y,a,s){
-    this.x=x;this.y=y;
-    this.vx=Math.cos(a)*s;
-    this.vy=Math.sin(a)*s;
-    this.life=60;
-  }
-  update(){
-    this.x+=this.vx*timeScale;
-    this.y+=this.vy*timeScale;
-    this.life--;
-  }
-  draw(){
-    ctx.fillStyle="#0ff";
-    ctx.fillRect(this.x-2,this.y-2,4,4);
-  }
+  constructor(x,y,a,s){this.x=x;this.y=y;this.vx=Math.cos(a)*s;this.vy=Math.sin(a)*s;this.life=70;}
+  update(){this.x+=this.vx*timeScale;this.y+=this.vy*timeScale;this.life--;}
+  draw(){ctx.fillStyle='#0ff';ctx.fillRect(this.x-2,this.y-2,4,4);}
 }
 
-/* ======================================================
-   GORE / DEBRIS
-====================================================== */
-const decals=[],chunks=[];
-function splatter(x,y){
-  decals.push({x,y,r:10+Math.random()*12,l:400});
-  for(let i=0;i<4;i++)
-    chunks.push({x,y,vx:(Math.random()-.5)*6,vy:-4});
+function enemyShoot(x,y,a){bullets.push(new Bullet(x,y,a+(Math.random()-.5)*0.1,14));}
+
+// ======================================================
+// GORE CHUNKS (STYLIZED)
+// ======================================================
+const chunks = [];
+function gore(x,y){for(let i=0;i<6;i++)chunks.push({x,y,vx:(Math.random()-.5)*6,vy:-Math.random()*5,life:120});}
+
+// ======================================================
+// RAGDOLL PHYSICS
+// ======================================================
+class Point{
+  constructor(x,y){this.x=x;this.y=y;this.oldx=x;this.oldy=y;}
+  update(){const vx=this.x-this.oldx, vy=this.y-this.oldy;this.oldx=this.x;this.oldy=this.y;this.x+=vx;this.y+=vy+0.6*timeScale;}
+}
+class Stick{
+  constructor(a,b,l){this.a=a;this.b=b;this.l=l;}
+  solve(){const dx=this.b.x-this.a.x,dy=this.b.y-this.a.y,d=Math.hypot(dx,dy)||0.001;const diff=(this.l-d)/d*0.5;const ox=dx*diff,oy=dy*diff;this.a.x-=ox;this.a.y-=oy;this.b.x+=ox;this.b.y+=oy;}
 }
 
-/* ======================================================
-   HUMANOID DRAW
-====================================================== */
-function drawHuman(x,y,aim,dead=false){
-  ctx.save();
-  ctx.translate(x,y);
+// ======================================================
+// PLAYER
+// ======================================================
+const player = {x:120,y:420,vx:0,vy:0,w:20,h:48,g:false,cd:0,combo:0,comboTimer:0,score:0};
 
-  // legs
-  ctx.fillStyle="#222";
-  ctx.fillRect(-5,28,4,18);
-  ctx.fillRect(1,28,4,18);
-
-  // torso
-  ctx.fillStyle=dead?"#333":"#444";
-  ctx.fillRect(-8,6,16,24);
-
-  // head
-  ctx.beginPath();
-  ctx.arc(0,-4,7,0,Math.PI*2);
-  ctx.fillStyle="#555";
-  ctx.fill();
-
-  // arm + gun
-  ctx.rotate(aim);
-  ctx.fillStyle="#333";
-  ctx.fillRect(4,10,14,3);
-  ctx.fillStyle="#111";
-  ctx.fillRect(18,9,10,5);
-
-  ctx.restore();
-}
-
-/* ======================================================
-   PLAYER
-====================================================== */
-const player={
-  x:120,y:400,vx:0,vy:0,w:20,h:48,
-  g:false,cd:0,combo:0,score:0
-};
 function updatePlayer(){
-  timeScale=keys.shift?0.35:1;
-
+  timeScale = keys.shift ? 0.35 : 1;
   player.vx=((keys.a?-1:0)+(keys.d?1:0))*7;
   player.vy+=0.9*timeScale;
-  if(keys[" "]&&player.g){player.vy=-15;player.g=false;}
-
+  if(keys[' ']&&player.g){player.vy=-15;player.g=false;}
   player.x+=player.vx*timeScale;
   player.y+=player.vy*timeScale;
-  player.g=floorCollide(player,player.h);
-
+  player.g=false;
+  platforms.forEach(p=>{if(player.x>p.x&&player.x<p.x+p.w&&player.y+player.h<=p.y+10&&player.y+player.h+player.vy>=p.y){player.y=p.y-player.h;player.vy=0;player.g=true;}});
   player.cd--;
   if(mouse.l&&player.cd<=0){
     const w=weapons[weaponIndex];
-    const cx=player.x+player.w/2,cy=player.y+14;
-    const ang=Math.atan2(mouse.y-cy,mouse.x-cx);
-    for(let i=0;i<w.pellets;i++)
-      bullets.push(new Bullet(
-        cx,cy,
-        ang+(Math.random()-.5)*w.spread,
-        w.speed
-      ));
-    player.cd=w.rate;
-    camShake=8;
+    const cx=player.x+player.w/2, cy=player.y+14;
+    const a=Math.atan2(mouse.y-cy,mouse.x-cx);
+    for(let i=0;i<w.pellets;i++)bullets.push(new Bullet(cx,cy,a+(Math.random()-.5)*w.spread,w.speed));
+    player.cd=w.rate;camShake=8;
   }
+  if(player.comboTimer>0)player.comboTimer--;else player.combo=0;
 }
 
-/* ======================================================
-   ENEMY
-====================================================== */
-class Enemy {
+function drawPlayer(){
+  ctx.save();ctx.translate(player.x,player.y);
+  ctx.fillStyle='#444';ctx.fillRect(4,8,12,28);
+  ctx.beginPath();ctx.arc(10,4,6,0,Math.PI*2);ctx.fillStyle='#666';ctx.fill();
+  ctx.rotate(Math.atan2(mouse.y-(player.y+14),mouse.x-(player.x+10)));
+  if(weapons[weaponIndex].name==='Shotgun'){
+    ctx.fillStyle='#4b2e1e';ctx.fillRect(16,14,6,4);
+    ctx.fillStyle='#8b5a2b';ctx.fillRect(22,13,10,6);
+    ctx.fillStyle='#222';ctx.fillRect(32,14,12,3);
+  } else ctx.fillStyle='#111',ctx.fillRect(16,14,10,4);
+  ctx.restore();
+}
+
+// ======================================================
+// ENEMY (FULLY IMPLEMENTED AI + RAGDOLL)
+// ======================================================
+class Enemy{
   constructor(x,y){
-    this.alive = true;
-    this.hp = 3;
-
-    // --- RAGDOLL POINTS ---
-    this.head  = new Point(x, y-18);
-    this.torso = new Point(x, y);
-    this.hips  = new Point(x, y+22);
-
-    this.lArm = new Point(x-16, y);
-    this.rArm = new Point(x+16, y);
-    this.lLeg = new Point(x-8, y+46);
-    this.rLeg = new Point(x+8, y+46);
-
-    this.points = [
-      this.head,this.torso,this.hips,
-      this.lArm,this.rArm,this.lLeg,this.rLeg
-    ];
-
-    this.sticks = [
-      new Stick(this.head,this.torso,18),
-      new Stick(this.torso,this.hips,22),
-
-      new Stick(this.torso,this.lArm,20),
-      new Stick(this.torso,this.rArm,20),
-
-      new Stick(this.hips,this.lLeg,26),
-      new Stick(this.hips,this.rLeg,26),
-
+    this.alive=true;this.hp=3;this.state='patrol';this.dir=1;
+    this.patrolMin=x-140;this.patrolMax=x+140;this.shootCD=0;
+    this.head=new Point(x,y-18);this.torso=new Point(x,y);this.hips=new Point(x,y+22);
+    this.lArm=new Point(x-16,y);this.rArm=new Point(x+16,y);
+    this.lLeg=new Point(x-8,y+46);this.rLeg=new Point(x+8,y+46);
+    this.points=[this.head,this.torso,this.hips,this.lArm,this.rArm,this.lLeg,this.rLeg];
+    this.sticks=[
+      new Stick(this.head,this.torso,18),new Stick(this.torso,this.hips,22),
+      new Stick(this.torso,this.lArm,20),new Stick(this.torso,this.rArm,20),
+      new Stick(this.hips,this.lLeg,26),new Stick(this.hips,this.rLeg,26),
       new Stick(this.lLeg,this.rLeg,14)
     ];
-
-    // --- AI ---
-    this.state = "patrol";
-    this.dir = 1;
-    this.patrolMin = x - 140;
-    this.patrolMax = x + 140;
-    this.shootCooldown = 0;
   }
-
   update(){
     if(this.alive){
-      const dx = player.x - this.torso.x;
-      const dist = Math.abs(dx);
-
-      // ---- STATE SWITCHING ----
-      if(dist < 320) this.state = "chase";
-      else this.state = "patrol";
-
-      // ---- PATROL ----
-      if(this.state === "patrol"){
-        this.torso.x += this.dir * 1.1 * timeScale;
-        if(this.torso.x < this.patrolMin || this.torso.x > this.patrolMax)
-          this.dir *= -1;
+      const dx=player.x-this.torso.x,dist=Math.abs(dx);
+      this.state = dist<320?'chase':'patrol';
+      if(this.state==='patrol'){
+        this.torso.x+=this.dir*1.1*timeScale;
+        if(this.torso.x<this.patrolMin||this.torso.x>this.patrolMax)this.dir*=-1;
+      } else {
+        this.dir=Math.sign(dx)||this.dir;
+        this.torso.x+=this.dir*1.6*timeScale;
+        this.shootCD--;
+        if(this.shootCD<=0){this.shootCD=90;enemyShoot(this.torso.x,this.torso.y,Math.atan2(player.y-this.torso.y,player.x-this.torso.x));}
       }
-
-      // ---- CHASE ----
-      if(this.state === "chase"){
-        this.dir = Math.sign(dx) || this.dir;
-        this.torso.x += this.dir * 1.6 * timeScale;
-
-        // shoot at player
-        this.shootCooldown--;
-        if(this.shootCooldown <= 0){
-          this.shootCooldown = 90;
-          enemyShoot(
-            this.torso.x,
-            this.torso.y,
-            Math.atan2(player.y-this.torso.y, player.x-this.torso.x)
-          );
-        }
-      }
-
-      // move rest of body with torso
-      this.points.forEach(p=>{
-        if(p !== this.torso){
-          p.x += this.dir * 1.2 * timeScale;
-        }
-      });
+      this.points.forEach(p=>{if(p!==this.torso)p.x+=this.dir*1.2*timeScale;});
     }
-
-    // ---- PHYSICS (ALWAYS RUNS) ----
-    this.points.forEach(p=>{
-      p.update();
-      solveFloor(p);
-    });
-
-    for(let i=0;i<4;i++)
-      this.sticks.forEach(s=>s.solve());
+    this.points.forEach(p=>{p.update();solveFloor(p);});
+    for(let i=0;i<4;i++)this.sticks.forEach(s=>s.solve());
   }
-
   hit(b){
-    this.hp--;
-    gore(b.x,b.y);
-
-    // impulse from bullet
-    this.points.forEach(p=>{
-      const dx = p.x - b.x;
-      const dy = p.y - b.y;
-      const d = Math.hypot(dx,dy);
-      if(d < 35){
-        p.oldx = p.x - dx * 2.2;
-        p.oldy = p.y - dy * 2.2;
-      }
-    });
-
-    if(this.hp <= 0){
-      this.alive = false;
-      camShake = 18;
-      player.combo++;
-      player.comboTimer = 120;
-      player.score += 200 * player.combo;
-    }
+    this.hp--;gore(b.x,b.y);
+    this.points.forEach(p=>{const dx=p.x-b.x,dy=p.y-b.y,d=Math.hypot(dx,dy);if(d<35){p.oldx=p.x-dx*2.2;p.oldy=p.y-dy*2.2;}});
+    if(this.hp<=0){this.alive=false;camShake=18;player.combo++;player.comboTimer=120;player.score+=200*player.combo;}
   }
-
   draw(){
-    ctx.strokeStyle = this.alive ? "#666" : "#333";
-    ctx.lineWidth = 4;
-
-    ctx.beginPath();
-    this.sticks.forEach(s=>{
-      ctx.moveTo(s.a.x,s.a.y);
-      ctx.lineTo(s.b.x,s.b.y);
-    });
-    ctx.stroke();
-
-    ctx.fillStyle = "#777";
-    ctx.beginPath();
-    ctx.arc(this.head.x,this.head.y,6,0,Math.PI*2);
-    ctx.fill();
+    ctx.strokeStyle=this.alive?'#666':'#333';ctx.lineWidth=4;ctx.beginPath();
+    this.sticks.forEach(s=>{ctx.moveTo(s.a.x,s.a.y);ctx.lineTo(s.b.x,s.b.y);});ctx.stroke();
+    ctx.fillStyle='#777';ctx.beginPath();ctx.arc(this.head.x,this.head.y,6,0,Math.PI*2);ctx.fill();
   }
 }
 
+const enemies=[new Enemy(520,460),new Enemy(820,420),new Enemy(1120,360)];
 
-/* ======================================================
-   LOOP
-====================================================== */
+// ======================================================
+// LOOP
+// ======================================================
 function loop(){
   ctx.clearRect(0,0,c.width,c.height);
-  ctx.save();
-  applyCamera();
-
-  // background
-  ctx.fillStyle="#1a1a1a";
-  platforms.forEach(p=>ctx.fillRect(p.x,p.y,p.w,p.h));
-
-  // decals
-  decals.forEach(d=>{
-    ctx.fillStyle=`rgba(90,0,0,${d.l/400})`;
-    ctx.beginPath();
-    ctx.arc(d.x,d.y,d.r,0,Math.PI*2);
-    ctx.fill();
-    d.l--;
-  });
-
+  ctx.save();applyCamera();
+  ctx.fillStyle='#1b1b1b';platforms.forEach(p=>ctx.fillRect(p.x,p.y,p.w,p.h));
   updatePlayer();
   enemies.forEach(e=>e.update());
-
   for(let i=bullets.length-1;i>=0;i--){
-    const b=bullets[i];
-    b.update();
-    enemies.forEach(e=>{
-      if(!e.dead &&
-        b.x>e.x-8&&b.x<e.x+8&&
-        b.y>e.y&&b.y<e.y+48){
-        e.hit(b);
-        b.life=0;
-      }
-    });
-    if(b.life<=0) bullets.splice(i,1);
+    const b=bullets[i];b.update();
+    enemies.forEach(e=>{if(!e.alive)return;e.points.forEach(p=>{if(Math.hypot(b.x-p.x,b.y-p.y)<8){e.hit(b);b.life=0;}});});
+    if(b.life<=0)bullets.splice(i,1);
   }
-
   bullets.forEach(b=>b.draw());
-  chunks.forEach(c=>{
-    c.vy+=0.6;
-    c.x+=c.vx;c.y+=c.vy;
-    ctx.fillStyle="#400";
-    ctx.fillRect(c.x,c.y,6,6);
-  });
+  chunks.forEach(c=>{c.vy+=0.6;c.x+=c.vx;c.y+=c.vy;ctx.fillStyle='#500';ctx.fillRect(c.x,c.y,6,6);c.life--;});
   enemies.forEach(e=>e.draw());
-  drawHuman(
-    player.x,player.y,
-    Math.atan2(mouse.y-(player.y+14),mouse.x-(player.x+10))
-  );
-
+  drawPlayer();
   ctx.restore();
-
-  ui.innerHTML=
-    `WEAPON: ${weapons[weaponIndex].name}<br>`+
-    `COMBO: x${player.combo}<br>`+
-    `SCORE: ${player.score}`;
-
+  ui.innerHTML=`WEAPON: ${weapons[weaponIndex].name}<br>COMBO: x${player.combo}<br>SCORE: ${player.score}`;
   requestAnimationFrame(loop);
 }
 loop();
 </script>
 </body>
 </html>
-
