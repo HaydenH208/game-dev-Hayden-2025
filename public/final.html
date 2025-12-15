@@ -2,10 +2,10 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8">
-<title>Pedro-Style FAT Demo (Stylized Gore)</title>
+<title>Pedro-Style Industrial Demo</title>
 <style>
-html,body{margin:0;background:#111;overflow:hidden}
-canvas{display:block;margin:auto;background:#1a1a1a}
+html,body{margin:0;background:#0e0e0e;overflow:hidden}
+canvas{display:block;margin:auto;background:#151515}
 </style>
 </head>
 <body>
@@ -15,32 +15,38 @@ canvas{display:block;margin:auto;background:#1a1a1a}
 // ==========================================================
 // CANVAS
 // ==========================================================
-const canvas = document.getElementById("c");
-const ctx = canvas.getContext("2d");
-canvas.width = 1100;
-canvas.height = 600;
+const canvas=document.getElementById("c");
+const ctx=canvas.getContext("2d");
+canvas.width=1200;
+canvas.height=600;
 
 // ==========================================================
 // INPUT
 // ==========================================================
-const keys = {};
+const keys={};
 addEventListener("keydown",e=>keys[e.key.toLowerCase()]=true);
 addEventListener("keyup",e=>keys[e.key.toLowerCase()]=false);
 
-const mouse={x:0,y:0,down:false};
+const mouse={x:0,y:0,l:false,r:false};
 canvas.onmousemove=e=>{
-  const r=canvas.getBoundingClientRect();
-  mouse.x=e.clientX-r.left;
-  mouse.y=e.clientY-r.top;
+  const b=canvas.getBoundingClientRect();
+  mouse.x=e.clientX-b.left;
+  mouse.y=e.clientY-b.top;
 };
-canvas.onmousedown=()=>mouse.down=true;
-canvas.onmouseup=()=>mouse.down=false;
+canvas.onmousedown=e=>{
+  if(e.button===0) mouse.l=true;
+  if(e.button===2) mouse.r=true;
+};
+canvas.onmouseup=e=>{
+  if(e.button===0) mouse.l=false;
+  if(e.button===2) mouse.r=false;
+};
+canvas.oncontextmenu=e=>e.preventDefault();
 
 // ==========================================================
 // UTILS
 // ==========================================================
-function clamp(v,a,b){return Math.max(a,Math.min(b,v))}
-function roundRect(ctx,x,y,w,h,r){
+function rr(ctx,x,y,w,h,r){
   ctx.beginPath();
   ctx.moveTo(x+r,y);
   ctx.lineTo(x+w-r,y);
@@ -55,38 +61,37 @@ function roundRect(ctx,x,y,w,h,r){
 }
 
 // ==========================================================
-// LEVEL
+// INDUSTRIAL ALLEY MAP
 // ==========================================================
 const platforms=[
-  {x:0,y:540,w:2000,h:60},
-  {x:300,y:420,w:300,h:20},
-  {x:700,y:330,w:250,h:20}
+  {x:-200,y:560,w:2000,h:60}, // ground
+  {x:200,y:450,w:200,h:20},
+  {x:480,y:380,w:220,h:20},
+  {x:780,y:320,w:240,h:20},
+  {x:350,y:260,w:180,h:20},
+  {x:900,y:460,w:180,h:20},
+  {x:50,y:350,w:140,h:20},
 ];
 
 // ==========================================================
-// DECALS (BLOOD SHADOWS)
+// DECALS & PARTICLES
 // ==========================================================
-const decals=[];
-function spawnDecal(x,y){
-  decals.push({x,y,r:10+Math.random()*12,life:400});
+const decals=[],particles=[];
+function decal(x,y){
+  decals.push({x,y,r:12+Math.random()*10,l:350});
 }
-
-// ==========================================================
-// PARTICLES (STYLIZED BLOOD)
-// ==========================================================
-const particles=[];
 class Particle{
   constructor(x,y){
     this.x=x;this.y=y;
-    this.vx=(Math.random()-.5)*7;
-    this.vy=(Math.random()-.8)*7;
-    this.life=40;
+    this.vx=(Math.random()-.5)*6;
+    this.vy=(Math.random()-.7)*6;
+    this.l=35;
   }
   update(){
     this.vy+=0.4;
     this.x+=this.vx;
     this.y+=this.vy;
-    this.life--;
+    this.l--;
   }
   draw(){
     ctx.fillStyle="rgba(120,0,0,.8)";
@@ -97,164 +102,178 @@ class Particle{
 // ==========================================================
 // BULLETS
 // ==========================================================
+const bullets=[];
 class Bullet{
-  constructor(x,y,a,enemy=false){
+  constructor(x,y,a,power,enemy=false){
     this.x=x;this.y=y;
     this.vx=Math.cos(a)*18;
     this.vy=Math.sin(a)*18;
     this.enemy=enemy;
-    this.life=60;
-    this.power=1;
+    this.life=50;
+    this.power=power;
   }
-  update(){
-    this.x+=this.vx;
-    this.y+=this.vy;
-    this.life--;
-  }
+  update(){this.x+=this.vx;this.y+=this.vy;this.life--;}
   draw(){
     ctx.fillStyle=this.enemy?"#ff5555":"#00ffff";
     ctx.fillRect(this.x-2,this.y-2,4,4);
   }
 }
-const bullets=[];
 
 // ==========================================================
 // PLAYER
 // ==========================================================
 class Player{
   constructor(){
-    this.x=100;this.y=300;
+    this.x=80;this.y=300;
     this.w=30;this.h=60;
     this.vx=0;this.vy=0;
-    this.onGround=false;
-    this.cooldown=0;
+    this.g=false;
+    this.cd=0;
   }
   update(){
-    let dir=(keys["a"]?-1:0)+(keys["d"]?1:0);
-    this.vx=dir*6;
+    this.vx=((keys.a?-1:0)+(keys.d?1:0))*6;
     this.vy+=0.8;
+    if(keys[" "]&&this.g){this.vy=-14;this.g=false;}
+    this.x+=this.vx;this.y+=this.vy;
 
-    if(keys[" "]&&this.onGround){
-      this.vy=-14;
-      this.onGround=false;
-    }
-
-    this.x+=this.vx;
-    this.y+=this.vy;
-
-    this.onGround=false;
-    for(const p of platforms){
+    this.g=false;
+    platforms.forEach(p=>{
       if(this.x+this.w>p.x && this.x<p.x+p.w){
         if(this.y+this.h<=p.y+10 && this.y+this.h+this.vy>=p.y){
           this.y=p.y-this.h;
           this.vy=0;
-          this.onGround=true;
+          this.g=true;
         }
       }
+    });
+
+    const cx=this.x+this.w/2;
+    const cy=this.y+this.h*0.35;
+    const ang=Math.atan2(mouse.y-cy,mouse.x-cx);
+
+    this.cd--;
+    if(mouse.l && this.cd<=0){
+      bullets.push(new Bullet(cx,cy,ang,1,false));
+      this.cd=6;
     }
 
-    this.cooldown--;
-    if(mouse.down && this.cooldown<=0){
-      const cx=this.x+this.w/2;
-      const cy=this.y+this.h*0.4;
-      const a=Math.atan2(mouse.y-cy,mouse.x-cx);
-      bullets.push(new Bullet(cx,cy,a,false));
-      this.cooldown=6;
+    // SHOTGUN
+    if(mouse.r && this.cd<=0){
+      for(let i=0;i<7;i++){
+        bullets.push(new Bullet(
+          cx,cy,
+          ang+(Math.random()-.5)*0.35,
+          0.6,false
+        ));
+      }
+      this.cd=20;
     }
+  }
+  draw(){
+    ctx.fillStyle="#ccc";
+    rr(ctx,this.x,this.y,this.w,this.h,6);
+    ctx.fill();
   }
 }
 const player=new Player();
 
 // ==========================================================
-// ENEMY (DAMAGE, LIMBS, RAGDOLL-LITE)
+// ENEMY
 // ==========================================================
 class Enemy{
   constructor(x,y){
     this.x=x;this.y=y;
-    this.w=30;this.h=60;
-    this.dead=false;
+    this.w=32;this.h=64;
     this.vy=0;
-    this.rot=(Math.random()-.5)*0.8;
+    this.dead=false;
 
-    this.parts={head:true,left:true,right:true};
+    this.parts={head:true,l:true,r:true};
 
     this.body=document.createElement("canvas");
-    this.body.width=60;
-    this.body.height=100;
-    this.bctx=this.body.getContext("2d");
+    this.body.width=70;this.body.height=120;
+    this.b=this.body.getContext("2d");
     this.redraw();
   }
 
   redraw(){
-    const c=this.bctx;
-    c.clearRect(0,0,60,100);
+    const c=this.b;
+    c.clearRect(0,0,70,120);
 
-    c.fillStyle="#8b2a2a";
-    roundRect(c,18,25,24,45,6);
+    // legs
+    c.fillStyle="#222";
+    c.fillRect(28,70,8,35);
+    c.fillRect(36,70,8,35);
+
+    // torso
+    c.fillStyle="#444";
+    rr(c,22,30,26,40,6);
     c.fill();
 
+    // arms
+    c.fillStyle="#333";
+    if(this.parts.l) c.fillRect(10,34,10,28);
+    if(this.parts.r) c.fillRect(50,34,10,28);
+
+    // head
     if(this.parts.head){
       c.beginPath();
-      c.arc(30,10,9,0,Math.PI*2);
-      c.fillStyle="#b33";
+      c.arc(35,16,10,0,Math.PI*2);
+      c.fillStyle="#555";
       c.fill();
     }
-
-    c.fillStyle="#8b2a2a";
-    if(this.parts.left) c.fillRect(8,35,10,30);
-    if(this.parts.right) c.fillRect(42,35,10,30);
   }
 
-  hit(x,y){
+  hit(x,y,power){
     const ly=y-this.y;
+    if(ly<18 && this.parts.head){this.parts.head=false;this.dead=true;}
+    else if(ly<45){this.parts[Math.random()<0.5?"l":"r"]=false;}
+    else this.dead=true;
 
-    if(ly<15 && this.parts.head){
-      this.parts.head=false;
-      this.dead=true;
-    }else if(ly<45){
-      this.parts[Math.random()<0.5?"left":"right"]=false;
-    }else{
-      this.dead=true;
-    }
+    this.b.globalCompositeOperation="destination-out";
+    this.b.beginPath();
+    this.b.arc(x-this.x+35,y-this.y,10+power*6,0,Math.PI*2);
+    this.b.fill();
+    this.b.globalCompositeOperation="source-over";
 
-    this.bctx.globalCompositeOperation="destination-out";
-    this.bctx.beginPath();
-    this.bctx.arc(x-this.x+30,y-this.y,10+Math.random()*6,0,Math.PI*2);
-    this.bctx.fill();
-    this.bctx.globalCompositeOperation="source-over";
-
-    for(let i=0;i<14;i++) particles.push(new Particle(x,y));
-    spawnDecal(x,y);
+    for(let i=0;i<10;i++) particles.push(new Particle(x,y));
+    decal(x,y);
     this.redraw();
   }
 
   update(){
-    if(this.dead){
-      this.vy+=0.6;
-      this.y+=this.vy;
-      return;
-    }
+    this.vy+=0.7;
+    this.y+=this.vy;
 
-    const dx=player.x-this.x;
-    const dy=player.y-this.y;
-    if(Math.hypot(dx,dy)<400){
-      if(Math.random()<0.01){
-        bullets.push(new Bullet(this.x+15,this.y+30,Math.atan2(dy,dx),true));
+    platforms.forEach(p=>{
+      if(this.x+this.w>p.x && this.x<p.x+p.w){
+        if(this.y+this.h<=p.y+10 && this.y+this.h>=p.y){
+          this.y=p.y-this.h;
+          this.vy=0;
+        }
+      }
+    });
+
+    if(!this.dead){
+      const dx=player.x-this.x;
+      const dy=player.y-this.y;
+      if(Math.hypot(dx,dy)<420 && Math.random()<0.012){
+        bullets.push(new Bullet(
+          this.x+16,this.y+30,
+          Math.atan2(dy,dx),1,true
+        ));
       }
     }
   }
 
   draw(){
-    ctx.save();
-    ctx.translate(this.x+15,this.y+30);
-    if(this.dead) ctx.rotate(this.rot);
-    ctx.drawImage(this.body,-30,-50);
-    ctx.restore();
+    ctx.drawImage(this.body,this.x-19,this.y-20);
   }
 }
+
 const enemies=[
-  new Enemy(500,360),
-  new Enemy(800,270)
+  new Enemy(420,380),
+  new Enemy(680,310),
+  new Enemy(980,250)
 ];
 
 // ==========================================================
@@ -263,15 +282,16 @@ const enemies=[
 function loop(){
   ctx.clearRect(0,0,canvas.width,canvas.height);
 
-  ctx.fillStyle="#222";
+  // background
+  ctx.fillStyle="#1f1f1f";
   platforms.forEach(p=>ctx.fillRect(p.x,p.y,p.w,p.h));
 
   decals.forEach(d=>{
-    ctx.fillStyle=`rgba(80,0,0,${d.life/400})`;
+    ctx.fillStyle=`rgba(80,0,0,${d.l/350})`;
     ctx.beginPath();
     ctx.arc(d.x,d.y,d.r,0,Math.PI*2);
     ctx.fill();
-    d.life--;
+    d.l--;
   });
 
   player.update();
@@ -284,10 +304,8 @@ function loop(){
 
     if(!b.enemy){
       enemies.forEach(e=>{
-        if(!e.dead &&
-           b.x>e.x && b.x<e.x+e.w &&
-           b.y>e.y && b.y<e.y+e.h){
-          e.hit(b.x,b.y);
+        if(b.x>e.x&&b.x<e.x+e.w&&b.y>e.y&&b.y<e.y+e.h){
+          e.hit(b.x,b.y,b.power);
           b.life=0;
         }
       });
@@ -295,11 +313,12 @@ function loop(){
   }
 
   particles.forEach(p=>p.update());
-  for(let i=particles.length-1;i>=0;i--) if(particles[i].life<=0) particles.splice(i,1);
+  for(let i=particles.length-1;i>=0;i--) if(particles[i].l<=0) particles.splice(i,1);
 
   bullets.forEach(b=>b.draw());
   enemies.forEach(e=>e.draw());
   particles.forEach(p=>p.draw());
+  player.draw();
 
   requestAnimationFrame(loop);
 }
