@@ -59,14 +59,29 @@ class Player{constructor(){this.x=120;this.y=400;this.w=36;this.h=68;this.vx=0;t
 const player=new Player();
 addEventListener('wheel',e=>{player.weapon=(player.weapon+1)%2});
 
+// ===================== RAGDOLL =====================
+class Limb{constructor(x,y,w,h){this.x=x;this.y=y;this.w=w;this.h=h;this.vx=(Math.random()-0.5)*6;this.vy=-Math.random()*6;this.a=Math.random()*Math.PI}
+ u(dt){this.vy+=0.9; this.x+=this.vx*dt; this.y+=this.vy*dt; this.a+=this.vx*0.02}
+ d(){ctx.save(); ctx.translate(this.x,this.y); ctx.rotate(this.a); ctx.fillRect(-this.w/2,-this.h/2,this.w,this.h); ctx.restore()}}
+
 // ===================== ENEMIES =====================
-class Enemy{constructor(x,y){this.x=x;this.y=y;this.w=36;this.h=64;this.vx=1.5;this.vy=0;this.hp=3;this.dead=false}
- u(dt){ if(this.dead){this.vy+=0.9; this.y+=this.vy*dt; return}
+class Enemy{constructor(x,y){this.x=x;this.y=y;this.w=36;this.h=64;this.vx=1.5;this.vy=0;this.hp=3;this.dead=false;this.ragdoll=[]}
+ u(dt){ if(this.dead){ this.ragdoll.forEach(l=>l.u(dt)); return }
  this.vy+=0.9; this.x+=this.vx*dt; this.y+=this.vy*dt;
  let on=false; for(const p of platforms){ if(this.x+this.w>p.x&&this.x<p.x+p.w&&this.y+this.h>p.y&&this.y+this.h<p.y+20){ this.y=p.y-this.h; this.vy=0; on=true }}
- if(!on){} if(this.x<200||this.x>980)this.vx*=-1 }
- hit(b){this.hp--; spark(b.x,b.y,14,'#c1121f'); if(this.hp<=0){this.dead=true; this.vx=0; camera.shake=10}}
- d(){ctx.fillStyle=this.dead?'#5a0000':'#e63946'; ctx.fillRect(this.x,this.y,this.w,this.h)}}
+ if(this.x<200||this.x>980)this.vx*=-1 }
+ die(){ this.dead=true; const cx=this.x+this.w/2, cy=this.y+this.h/2;
+ this.ragdoll=[
+  new Limb(cx,cy-20,12,20), // head
+  new Limb(cx,cy,14,30),   // torso
+  new Limb(cx-12,cy,8,26), // left arm
+  new Limb(cx+12,cy,8,26), // right arm
+  new Limb(cx-6,cy+32,10,28), // left leg
+  new Limb(cx+6,cy+32,10,28)  // right leg
+ ]; camera.shake=14 }
+ hit(b){this.hp--; spark(b.x,b.y,18,'#c1121f'); if(this.hp<=0) this.die()}
+ d(){ ctx.fillStyle='#e63946'; if(this.dead){ this.ragdoll.forEach(l=>l.d()); }
+ else ctx.fillRect(this.x,this.y,this.w,this.h) }}
 const enemies=[ new Enemy(520,380), new Enemy(860,300) ];
 
 // ===================== LOOP =====================
