@@ -10,7 +10,7 @@
 </style>
 </head>
 <body>
-<div class="hud">A/D move · Space jump · Mouse shoot · Shift slow-mo · Wheel switch</div>
+<div class="hud">A/D move · Space jump · Mouse shoot · Shift slow‑mo · Wheel switch</div>
 <canvas id="game" width="1100" height="600"></canvas>
 <script>
 // ===================== SAFE CORE =====================
@@ -72,7 +72,9 @@ class Limb{
       if(Math.abs(this.vy)<0.5) this.vy=0;
     }
   }
-  d(){ ctx.save(); ctx.translate(this.x,this.y); ctx.rotate(this.a); ctx.fillRect(-this.w/2,-this.h/2,this.w,this.h); ctx.restore(); }
+  d(){ ctx.save(); ctx.translate(this.x,this.y); ctx.rotate(this.a); ctx.beginPath();
+  ctx.ellipse(0,0,this.w/2,this.h/2,0,0,Math.PI*2);
+  ctx.fill(); ctx.restore(); }
 }
 
 // ===================== BULLETS =====================
@@ -132,8 +134,8 @@ class Enemy{
     this.dead=true;
     const cx=this.x+this.w/2, cy=this.y+this.h/2;
     this.ragdoll=[
-      new Limb(cx,cy-22,12,18), new Limb(cx,cy,14,30), new Limb(cx-14,cy,8,26),
-      new Limb(cx+14,cy,8,26), new Limb(cx-8,cy+34,10,28), new Limb(cx+8,cy+34,10,28)
+      new Limb(cx,cy-26,14,16) // head, new Limb(cx,cy,18,34) // torso, new Limb(cx-18,cy,8,28) // left arm,
+      new Limb(cx+18,cy,8,28) // right arm, new Limb(cx-8,cy+42,10,32) // left leg, new Limb(cx+8,cy+42,10,32) // right leg
     ];
     const severChance = b && b.p ? 0.8 : 0.35;
     if(Math.random()<severChance){ const limb=this.ragdoll.splice(Math.floor(Math.random()*this.ragdoll.length),1)[0]; limb.vx+=(Math.random()-0.5)*10; limb.vy-=8; this.ragdoll.push(limb); spark(limb.x,limb.y,20,'#8b0000'); }
