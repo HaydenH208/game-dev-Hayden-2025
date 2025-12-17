@@ -1,12 +1,11 @@
-<h6> Version 0.0.1 </h6>
+<h6>Version 0.0.2</h6>
 
 <body id="myBody"
-style="background-repeat:repeat; background-size:80%"
+style="background-repeat:repeat; background-size:80%; overflow:hidden;"
 background="myBackground01.jpg"
 onkeydown="myKeyDown(event)">
 
 <h1 align=center>t2a25-game-template-fred.html</h1>
-<br><br>
 
 <script>
 /* =========================
@@ -14,103 +13,123 @@ onkeydown="myKeyDown(event)">
 ========================= */
 let myGlobalX = 0
 let myClock
-let myPlayerYSpeed = 0
-let myOnGround = false
+let playerYSpeed = 0
+let onGround = false
+
+let enemies = []
 
 /* =========================
-   COLLISION FUNCTION
+   COLLISION (TEMPLATE-STYLE)
 ========================= */
-function myHitOther(my1,my2){
-   let left1   = parseInt(document.getElementById(my1).style.left)
-   let right1  = left1 + parseInt(document.getElementById(my1).style.width)
-   let top1    = parseInt(document.getElementById(my1).style.top)   
-   let bottom1 = top1 + parseInt(document.getElementById(my1).style.height)
+function hitBox(a, b){
+  return !(
+    a.right < b.left ||
+    a.left > b.right ||
+    a.bottom < b.top ||
+    a.top > b.bottom
+  )
+}
 
-   let left2   = parseInt(document.getElementById(my2).style.left)
-   let right2  = left2 + parseInt(document.getElementById(my2).style.width)
-   let top2    = parseInt(document.getElementById(my2).style.top)   
-   let bottom2 = top2 + parseInt(document.getElementById(my2).style.height)
-
-   if ((right1 >= left2) && (bottom1 >= top2) &&
-       (left1 <= right2) && (top1 <= bottom2)) {
-       return true
-   }
-   return false
+function getBox(el){
+  return {
+    left: parseInt(el.style.left),
+    right: parseInt(el.style.left) + parseInt(el.style.width),
+    top: parseInt(el.style.top),
+    bottom: parseInt(el.style.top) + parseInt(el.style.height)
+  }
 }
 
 /* =========================
-   GAME LOGIC
-========================= */
-function myCheckHit(){
-   if (myHitOther('myImg01','myImg02')){
-       alert('you lose')
-       document.getElementById('myImg01').style.left = '50px'
-       document.getElementById('myImg01').style.top  = '300px'
-   }
-}
-
-/* =========================
-   KEYBOARD CONTROLS
+   PLAYER INPUT
 ========================= */
 function myKeyDown(e){
-   let myImg = document.getElementById('myImg01')
+  let p = document.getElementById('myImg01')
 
-   if (e.key == 'd'){
-      myImg.style.left =
-         parseInt(myImg.style.left) + 10 + 'px'
-   }
+  if (e.key === 'a'){
+    p.style.left = parseInt(p.style.left) - 10 + 'px'
+  }
 
-   if (e.key == 'a'){
-      myImg.style.left =
-         parseInt(myImg.style.left) - 10 + 'px'
-   }
+  if (e.key === 'd'){
+    p.style.left = parseInt(p.style.left) + 10 + 'px'
+  }
 
-   if (e.key == 'w' && myOnGround){
-      myPlayerYSpeed = -15
-      myOnGround = false
-   }
+  if (e.key === 'w' && onGround){
+    playerYSpeed = -15
+    onGround = false
+  }
 }
+
+/* =========================
+   ENEMY SYSTEM (NO IMAGES)
+========================= */
+function spawnEnemy(x,y){
+  let e = document.createElement('div')
+  e.style.position = 'absolute'
+  e.style.width = '50px'
+  e.style.height = '80px'
+  e.style.left = x + 'px'
+  e.style.top = y + 'px'
+  e.style.background = '#b00'
+  e.style.borderRadius = '8px'
+  document.body.appendChild(e)
+
+  enemies.push({
+    el: e,
+    dir: 1,
+    speed: 2,
+    alive: true
+  })
+}
+
+spawnEnemy(400,300)
+spawnEnemy(650,300)
 
 /* =========================
    GAME LOOP
 ========================= */
 setInterval(function(){
 
-   let myImg = document.getElementById('myImg01')
+  /* ---- PLAYER PHYSICS ---- */
+  let p = document.getElementById('myImg01')
+  playerYSpeed += 1
+  p.style.top = parseInt(p.style.top) + playerYSpeed + 'px'
 
-   // gravity
-   myPlayerYSpeed += 1
-   myImg.style.top =
-      parseInt(myImg.style.top) + myPlayerYSpeed + 'px'
+  if (parseInt(p.style.top) > 300){
+    p.style.top = '300px'
+    playerYSpeed = 0
+    onGround = true
+  }
 
-   // floor
-   if (parseInt(myImg.style.top) > 300){
-      myImg.style.top = '300px'
-      myPlayerYSpeed = 0
-      myOnGround = true
-   }
+  let playerBox = getBox(p)
 
-   // enemy patrol
-   let enemy = document.getElementById('myImg02')
-   enemy.style.left =
-      parseInt(enemy.style.left) + 3 + 'px'
+  /* ---- ENEMIES ---- */
+  enemies.forEach(enemy => {
+    if (!enemy.alive) return
 
-   if (parseInt(enemy.style.left) > 500){
-      enemy.style.left = '250px'
-   }
+    let e = enemy.el
+    e.style.left =
+      parseInt(e.style.left) + enemy.dir * enemy.speed + 'px'
 
-   myCheckHit()
+    if (parseInt(e.style.left) < 200 || parseInt(e.style.left) > 800){
+      enemy.dir *= -1
+    }
+
+    let enemyBox = getBox(e)
+
+    if (hitBox(playerBox, enemyBox)){
+      alert('you lose')
+      p.style.left = '50px'
+      p.style.top = '300px'
+    }
+  })
 
 }, 50)
 </script>
 
+<!-- PLAYER -->
 <img id="myImg01"
-style="position:absolute; width:80px; height:80px; top:300px; left:50px;"
+style="position:absolute; width:60px; height:80px; top:300px; left:50px;"
 src="myImage01.jpg">
-
-<img id="myImg02"
-style="position:absolute; width:80px; height:80px; top:300px; left:250px;"
-src="myImage02.jpg">
 
 <br><br>
 
