@@ -2,145 +2,170 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8" />
-<title>Pedro-Style Engine – Restored</title>
+<title>Pedro-Style Engine – Fixed</title>
 <style>
-  html,body{margin:0;padding:0;background:#0b0b0b;color:#ddd;overflow:hidden}
-  canvas{display:block;margin:0 auto;background:#151515}
-  .hud{position:fixed;left:12px;top:10px;font:14px system-ui}
+  html,body{margin:0;padding:0;background:#000;overflow:hidden}
+  canvas{display:block;margin:0 auto;background:#111}
+  .hud{position:fixed;left:12px;top:10px;color:#ddd;font:14px system-ui;z-index:10}
 </style>
 </head>
 <body>
+<div class="hud">A/D move · Space jump · Mouse shoot · Shift slow-mo · Wheel switch</div>
 <canvas id="game" width="1100" height="600"></canvas>
-<div class="hud">A/D move · Space jump · Mouse shoot · Shift slow‑mo · Wheel switch</div>
 <script>
-// ===================== CORE =====================
+// ===================== SAFE CORE =====================
 const canvas = document.getElementById('game');
 const ctx = canvas.getContext('2d');
 let last=0, timeScale=1;
-const keys={}; addEventListener('keydown',e=>keys[e.key.toLowerCase()]=true);
+const keys={};
+addEventListener('keydown',e=>keys[e.key.toLowerCase()]=true);
 addEventListener('keyup',e=>keys[e.key.toLowerCase()]=false);
 const mouse={x:0,y:0,down:false};
 canvas.addEventListener('mousemove',e=>{const r=canvas.getBoundingClientRect(); mouse.x=e.clientX-r.left; mouse.y=e.clientY-r.top});
-addEventListener('mousedown',()=>mouse.down=true); addEventListener('mouseup',()=>mouse.down=false);
+addEventListener('mousedown',()=>mouse.down=true);
+addEventListener('mouseup',()=>mouse.down=false);
+addEventListener('wheel',e=>{player.weapon=(player.weapon+1)%2});
+
 const clamp=(v,a,b)=>Math.max(a,Math.min(b,v));
 
 // ===================== CAMERA =====================
-const camera={x:0,y:0,shake:0};
-function cam(){ if(camera.shake>0){ camera.shake*=0.9; ctx.translate((Math.random()-0.5)*camera.shake,(Math.random()-0.5)*camera.shake);} }
+const camera={shake:0};
+function applyCamera(){
+  if(camera.shake>0){
+    camera.shake*=0.9;
+    ctx.translate((Math.random()-0.5)*camera.shake,(Math.random()-0.5)*camera.shake);
+  }
+}
 
 // ===================== WORLD =====================
-const floorY=520;
-const platforms=[ {x:0,y:floorY,w:2000,h:80}, {x:420,y:430,w:180,h:20}, {x:720,y:360,w:180,h:20} ];
+const floorY = 520;
+const platforms = [
+  {x:0,y:floorY,w:2000,h:80},
+  {x:420,y:430,w:180,h:20},
+  {x:720,y:360,w:180,h:20}
+];
 
 // ===================== PARTICLES =====================
-class P{constructor(x,y,vx,vy,l,c){this.x=x;this.y=y;this.vx=vx;this.vy=vy;this.l=l;this.m=l;this.c=c}
- u(dt){this.x+=this.vx*dt; this.y+=this.vy*dt; this.vy+=0.6*dt; this.l-=dt}
- d(){ctx.globalAlpha=this.l/this.m; ctx.fillStyle=this.c; ctx.fillRect(this.x,this.y,2,2); ctx.globalAlpha=1}}
-const parts=[]; const spark=(x,y,n,c)=>{for(let i=0;i<n;i++)parts.push(new P(x,y,(Math.random()-0.5)*8,(Math.random()-1)*6,20,c))}
+class Particle{
+  constructor(x,y,vx,vy,l,c){this.x=x;this.y=y;this.vx=vx;this.vy=vy;this.l=l;this.m=l;this.c=c}
+  u(dt){this.x+=this.vx*dt; this.y+=this.vy*dt; this.vy+=0.6*dt; this.l-=dt}
+  d(){ctx.globalAlpha=this.l/this.m; ctx.fillStyle=this.c; ctx.fillRect(this.x,this.y,2,2); ctx.globalAlpha=1}
+}
+const parts=[];
+function spark(x,y,n,c){ for(let i=0;i<n;i++) parts.push(new Particle(x,y,(Math.random()-0.5)*8,(Math.random()-1)*6,20,c)); }
+
+// ===================== LIMB (RAGDOLL) =====================
+class Limb{
+  constructor(x,y,w,h){
+    this.x=x;this.y=y;this.w=w;this.h=h;
+    this.vx=(Math.random()-0.5)*6;
+    this.vy=-Math.random()*6;
+    this.a=Math.random()*Math.PI;
+    this.av=(Math.random()-0.5)*0.2;
+  }
+  u(dt){
+    this.vy+=0.9;
+    this.x+=this.vx*dt; this.y+=this.vy*dt; this.a+=this.av*dt;
+    if(this.y+this.h/2>floorY){
+      this.y=floorY-this.h/2;
+      this.vy*=-0.2; this.vx*=0.85; this.av*=0.7;
+      if(Math.abs(this.vy)<0.5) this.vy=0;
+    }
+  }
+  d(){ ctx.save(); ctx.translate(this.x,this.y); ctx.rotate(this.a); ctx.fillRect(-this.w/2,-this.h/2,this.w,this.h); ctx.restore(); }
+}
 
 // ===================== BULLETS =====================
-class Bullet{constructor(x,y,a,p){this.x=x;this.y=y;this.vx=Math.cos(a)*(p?22:16);this.vy=Math.sin(a)*(p?22:16);this.l=60;this.p=p}
- u(dt){this.x+=this.vx*dt; this.y+=this.vy*dt; this.l--}
- d(){ctx.fillStyle=this.p?'#ffb703':'#7df9ff'; ctx.fillRect(this.x-2,this.y-1,4,2)}}
+class Bullet{
+  constructor(x,y,a,shotgun){
+    const s = shotgun?22:16;
+    this.x=x; this.y=y; this.vx=Math.cos(a)*s; this.vy=Math.sin(a)*s; this.l=60; this.p=shotgun;
+  }
+  u(dt){ this.x+=this.vx*dt; this.y+=this.vy*dt; this.l--; }
+  d(){ ctx.fillStyle=this.p?'#ffb703':'#7df9ff'; ctx.fillRect(this.x-2,this.y-1,4,2); }
+}
 const bullets=[];
 
 // ===================== PLAYER =====================
-class Player{constructor(){this.x=120;this.y=400;this.w=36;this.h=68;this.vx=0;this.vy=0;this.g=true;this.cool=0;this.weapon=0}
- u(dt){timeScale=keys['shift']?0.35:1; dt*=timeScale;
- const dir=(keys['a']?-1:0)+(keys['d']?1:0); this.vx=dir*6; this.vy+=0.9;
- if(keys[' ']&&this.g){this.vy=-16; this.g=false; camera.shake=8}
- this.x+=this.vx*dt; this.y+=this.vy*dt;
- this.g=false; for(const p of platforms){ if(this.x+this.w>p.x&&this.x<p.x+p.w&&this.y+this.h>p.y&&this.y+this.h<p.y+20){ this.y=p.y-this.h; this.vy=0; this.g=true }}
- this.x=clamp(this.x,0,canvas.width-this.w);
- this.cool-=dt; if(mouse.down&&this.cool<=0){ this.cool= this.weapon?10:5; const cx=this.x+this.w/2, cy=this.y+this.h/2; const a=Math.atan2(mouse.y-cy,mouse.x-cx);
- if(this.weapon){ for(let i=-2;i<=2;i++) bullets.push(new Bullet(cx,cy,a+i*0.08,true)); } else bullets.push(new Bullet(cx,cy,a,false)); camera.shake=6 }
- }
- d(){ctx.save(); ctx.translate(this.x+this.w/2,this.y+this.h/2); ctx.fillStyle='#ffd166'; ctx.fillRect(-this.w/2,-this.h/2,this.w,this.h); ctx.restore()}}
-const player=new Player();
-addEventListener('wheel',e=>{player.weapon=(player.weapon+1)%2});
-
-// ===================== RAGDOLL =====================
-class Limb{
- constructor(x,y,w,h){
-  this.x=x;this.y=y;this.w=w;this.h=h;
-  this.vx=(Math.random()-0.5)*6;
-  this.vy=-Math.random()*6;
-  this.a=Math.random()*Math.PI;
-  this.av=(Math.random()-0.5)*0.2;
- }
- u(dt){
-  this.vy+=0.9; // gravity
-  this.x+=this.vx*dt;
-  this.y+=this.vy*dt;
-  this.a+=this.av*dt;
-  // floor collision & sliding
-  if(this.y+this.h/2>floorY){
-    this.y=floorY-this.h/2;
-    this.vy*=-0.2;      // damped bounce
-    this.vx*=0.85;      // friction slide
-    this.av*=0.7;       // rotational damping
-    if(Math.abs(this.vy)<0.5) this.vy=0;
+class Player{
+  constructor(){ this.x=120; this.y=400; this.w=36; this.h=68; this.vx=0; this.vy=0; this.g=false; this.cool=0; this.weapon=0; }
+  u(dt){
+    timeScale = keys['shift'] ? 0.35 : 1; dt*=timeScale;
+    const dir=(keys['a']?-1:0)+(keys['d']?1:0);
+    this.vx=dir*6; this.vy+=0.9;
+    if(keys[' '] && this.g){ this.vy=-16; this.g=false; camera.shake=8; }
+    this.x+=this.vx*dt; this.y+=this.vy*dt;
+    this.g=false;
+    for(const p of platforms){
+      if(this.x+this.w>p.x && this.x<p.x+p.w && this.y+this.h>p.y && this.y+this.h<p.y+20){
+        this.y=p.y-this.h; this.vy=0; this.g=true;
+      }
+    }
+    this.x=clamp(this.x,0,canvas.width-this.w);
+    this.cool-=dt;
+    if(mouse.down && this.cool<=0){
+      this.cool=this.weapon?10:5;
+      const cx=this.x+this.w/2, cy=this.y+this.h/2;
+      const a=Math.atan2(mouse.y-cy, mouse.x-cx);
+      if(this.weapon){ for(let i=-2;i<=2;i++) bullets.push(new Bullet(cx,cy,a+i*0.08,true)); }
+      else bullets.push(new Bullet(cx,cy,a,false));
+      camera.shake=6;
+    }
   }
- }
- d(){
-  ctx.save();
-  ctx.translate(this.x,this.y);
-  ctx.rotate(this.a);
-  ctx.fillRect(-this.w/2,-this.h/2,this.w,this.h);
-  ctx.restore();
- }
+  d(){ ctx.fillStyle='#ffd166'; ctx.fillRect(this.x,this.y,this.w,this.h); }
 }
- u(dt){this.vy+=0.9; this.x+=this.vx*dt; this.y+=this.vy*dt; this.a+=this.vx*0.02}
- d(){ctx.save(); ctx.translate(this.x,this.y); ctx.rotate(this.a); ctx.fillRect(-this.w/2,-this.h/2,this.w,this.h); ctx.restore()}}
+const player = new Player();
 
 // ===================== ENEMIES =====================
-class Enemy{constructor(x,y){this.x=x;this.y=y;this.w=36;this.h=64;this.vx=1.5;this.vy=0;this.hp=3;this.dead=false;this.ragdoll=[]}
- u(dt){ if(this.dead){ this.ragdoll.forEach(l=>l.u(dt)); return }
- this.vy+=0.9; this.x+=this.vx*dt; this.y+=this.vy*dt;
- let on=false; for(const p of platforms){ if(this.x+this.w>p.x&&this.x<p.x+p.w&&this.y+this.h>p.y&&this.y+this.h<p.y+20){ this.y=p.y-this.h; this.vy=0; on=true }}
- if(this.x<200||this.x>980)this.vx*=-1 }
- die(b){ this.dead=true; const cx=this.x+this.w/2, cy=this.y+this.h/2;
- const severChance = b && b.p ? 0.8 : 0.35;
- const sever = Math.random() < severChance;
- // base ragdoll
- this.ragdoll=[
-  new Limb(cx,cy-22,12,18), // head
-  new Limb(cx,cy,14,30),   // torso
-  new Limb(cx-14,cy,8,26), // left arm
-  new Limb(cx+14,cy,8,26), // right arm
-  new Limb(cx-8,cy+34,10,28), // left leg
-  new Limb(cx+8,cy+34,10,28)  // right leg
- ];
- // dismemberment: pop one limb with impulse
- if(sever){ const idx = Math.floor(Math.random()*this.ragdoll.length);
-   const limb = this.ragdoll.splice(idx,1)[0];
-   const ang = Math.atan2(b.y-cy,b.x-cx);
-   limb.vx += Math.cos(ang)*8; limb.vy += Math.sin(ang)*8;
-   limb.a += (Math.random()-0.5)*1.5;
-   // extra gore
-   for(let i=0;i<20;i++) spark(limb.x, limb.y, 1, '#8b0000');
-   this.ragdoll.push(limb); // keep it flying separately
- }
- camera.shake=16 }
- hit(b){ this.hp--; spark(b.x,b.y,22,'#c1121f'); if(this.hp<=0) this.die(b) }
- d(){ ctx.fillStyle='#e63946'; if(this.dead){ this.ragdoll.forEach(l=>l.d()); }
- else ctx.fillRect(this.x,this.y,this.w,this.h) }}
+class Enemy{
+  constructor(x,y){ this.x=x; this.y=y; this.w=36; this.h=64; this.vx=1.5; this.vy=0; this.hp=3; this.dead=false; this.ragdoll=[]; }
+  u(dt){
+    if(this.dead){ this.ragdoll.forEach(l=>l.u(dt)); return; }
+    this.vy+=0.9; this.x+=this.vx*dt; this.y+=this.vy*dt;
+    let on=false;
+    for(const p of platforms){
+      if(this.x+this.w>p.x && this.x<p.x+p.w && this.y+this.h>p.y && this.y+this.h<p.y+20){ this.y=p.y-this.h; this.vy=0; on=true; }
+    }
+    if(this.x<200||this.x>980) this.vx*=-1;
+  }
+  die(b){
+    this.dead=true;
+    const cx=this.x+this.w/2, cy=this.y+this.h/2;
+    this.ragdoll=[
+      new Limb(cx,cy-22,12,18), new Limb(cx,cy,14,30), new Limb(cx-14,cy,8,26),
+      new Limb(cx+14,cy,8,26), new Limb(cx-8,cy+34,10,28), new Limb(cx+8,cy+34,10,28)
+    ];
+    const severChance = b && b.p ? 0.8 : 0.35;
+    if(Math.random()<severChance){ const limb=this.ragdoll.splice(Math.floor(Math.random()*this.ragdoll.length),1)[0]; limb.vx+=(Math.random()-0.5)*10; limb.vy-=8; this.ragdoll.push(limb); spark(limb.x,limb.y,20,'#8b0000'); }
+    camera.shake=16;
+  }
+  hit(b){ this.hp--; spark(b.x,b.y,22,'#c1121f'); if(this.hp<=0) this.die(b); }
+  d(){ ctx.fillStyle='#e63946'; if(this.dead) this.ragdoll.forEach(l=>l.d()); else ctx.fillRect(this.x,this.y,this.w,this.h); }
+}
 const enemies=[ new Enemy(520,380), new Enemy(860,300) ];
 
 // ===================== LOOP =====================
-function step(t){const dt=(t-last)/16.67||1; last=t;
- player.u(dt);
- for(let i=bullets.length-1;i>=0;i--){ const b=bullets[i]; b.u(dt);
- for(const e of enemies){ if(!e.dead && b.x>e.x&&b.x<e.x+e.w&&b.y>e.y&&b.y<e.y+e.h){ e.hit(b); bullets.splice(i,1); break }}
- if(b.l<=0) bullets.splice(i,1)}
- enemies.forEach(e=>e.u(dt));
- for(let i=parts.length-1;i>=0;i--){ parts[i].u(dt); if(parts[i].l<=0) parts.splice(i,1)}
- draw(); requestAnimationFrame(step)}
-function draw(){ ctx.clearRect(0,0,canvas.width,canvas.height); ctx.save(); cam();
- ctx.fillStyle='#1f1f1f'; ctx.fillRect(0,0,canvas.width,canvas.height);
- ctx.fillStyle='#2b2b2b'; platforms.forEach(p=>ctx.fillRect(p.x,p.y,p.w,p.h));
- parts.forEach(p=>p.d()); bullets.forEach(b=>b.d()); enemies.forEach(e=>e.d()); player.d();
- if(timeScale<1){ctx.fillStyle='rgba(0,200,255,.08)'; ctx.fillRect(0,0,canvas.width,canvas.height)} ctx.restore() }
+function draw(){
+  ctx.clearRect(0,0,canvas.width,canvas.height);
+  ctx.save(); applyCamera();
+  ctx.fillStyle='#1f1f1f'; ctx.fillRect(0,0,canvas.width,canvas.height);
+  ctx.fillStyle='#2b2b2b'; platforms.forEach(p=>ctx.fillRect(p.x,p.y,p.w,p.h));
+  parts.forEach(p=>p.d()); bullets.forEach(b=>b.d()); enemies.forEach(e=>e.d()); player.d();
+  if(timeScale<1){ ctx.fillStyle='rgba(0,200,255,.08)'; ctx.fillRect(0,0,canvas.width,canvas.height); }
+  ctx.restore();
+}
+
+function step(t){
+  const dt=(t-last)/16.67||1; last=t;
+  player.u(dt);
+  for(let i=bullets.length-1;i>=0;i--){ const b=bullets[i]; b.u(dt);
+    for(const e of enemies){ if(!e.dead && b.x>e.x&&b.x<e.x+e.w&&b.y>e.y&&b.y<e.y+e.h){ e.hit(b); bullets.splice(i,1); break; } }
+    if(b.l<=0) bullets.splice(i,1);
+  }
+  enemies.forEach(e=>e.u(dt));
+  for(let i=parts.length-1;i>=0;i--){ parts[i].u(dt); if(parts[i].l<=0) parts.splice(i,1); }
+  draw(); requestAnimationFrame(step);
+}
 requestAnimationFrame(step);
 </script>
 </body>
