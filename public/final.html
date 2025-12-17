@@ -1,226 +1,124 @@
-<!DOCTYPE html>
-<html lang="en">
-<head>
-<meta charset="UTF-8" />
-<title>Pedro‑Style Ragdoll Demo (Single File)</title>
-<style>
-html,body{margin:0;background:#070707;overflow:hidden}
-canvas{display:block;margin:auto;background:#111}
-#ui{position:fixed;top:10px;left:10px;font-family:monospace;color:#0ff;font-size:14px}
-</style>
-</head>
-<body>
-<canvas id="c"></canvas>
-<div id="ui"></div>
+<h6> Version 0.0.1 </h6>
+
+<body id="myBody"
+style="background-repeat:repeat; background-size:80%"
+background="myBackground01.jpg"
+onkeydown="myKeyDown(event)">
+
+<h1 align=center>t2a25-game-template-fred.html</h1>
+<br><br>
+
 <script>
-// ======================================================
-// CANVAS
-// ======================================================
-const c = document.getElementById('c');
-const ctx = c.getContext('2d');
-c.width = 1400; c.height = 700;
-const ui = document.getElementById('ui');
+/* =========================
+   GLOBAL VARIABLES
+========================= */
+let myGlobalX = 0
+let myClock
+let myPlayerYSpeed = 0
+let myOnGround = false
 
-// ======================================================
-// INPUT
-// ======================================================
-const keys = {};
-const mouse = {x:0,y:0,l:false};
-addEventListener('keydown',e=>keys[e.key.toLowerCase()]=true);
-addEventListener('keyup',e=>keys[e.key.toLowerCase()]=false);
-c.onmousemove=e=>{const r=c.getBoundingClientRect();mouse.x=e.clientX-r.left;mouse.y=e.clientY-r.top;};
-c.onmousedown=()=>mouse.l=true;
-c.onmouseup=()=>mouse.l=false;
+/* =========================
+   COLLISION FUNCTION
+========================= */
+function myHitOther(my1,my2){
+   let left1   = parseInt(document.getElementById(my1).style.left)
+   let right1  = left1 + parseInt(document.getElementById(my1).style.width)
+   let top1    = parseInt(document.getElementById(my1).style.top)   
+   let bottom1 = top1 + parseInt(document.getElementById(my1).style.height)
 
-// ======================================================
-// TIME
-// ======================================================
-let timeScale = 1;
+   let left2   = parseInt(document.getElementById(my2).style.left)
+   let right2  = left2 + parseInt(document.getElementById(my2).style.width)
+   let top2    = parseInt(document.getElementById(my2).style.top)   
+   let bottom2 = top2 + parseInt(document.getElementById(my2).style.height)
 
-// ======================================================
-// MAP (ALLEY / INDUSTRIAL)
-// ======================================================
-const platforms = [
-  {x:-500,y:640,w:2600,h:80},
-  {x:180,y:520,w:300,h:18},
-  {x:540,y:470,w:260,h:18},
-  {x:900,y:420,w:260,h:18},
-  {x:1150,y:360,w:220,h:18}
-];
-
-function solveFloor(p){
-  platforms.forEach(pl=>{
-    if(p.x>pl.x && p.x<pl.x+pl.w && p.y>pl.y){
-      p.y = pl.y;
-      p.oldy = p.y;
-    }
-  });
+   if ((right1 >= left2) && (bottom1 >= top2) &&
+       (left1 <= right2) && (top1 <= bottom2)) {
+       return true
+   }
+   return false
 }
 
-// ======================================================
-// CAMERA
-// ======================================================
-let camShake = 0;
-function applyCamera(){
-  if(camShake>0){
-    camShake*=0.85;
-    ctx.translate((Math.random()-.5)*camShake,(Math.random()-.5)*camShake);
-  }
+/* =========================
+   GAME LOGIC
+========================= */
+function myCheckHit(){
+   if (myHitOther('myImg01','myImg02')){
+       alert('you lose')
+       document.getElementById('myImg01').style.left = '50px'
+       document.getElementById('myImg01').style.top  = '300px'
+   }
 }
 
-// ======================================================
-// WEAPONS
-// ======================================================
-const weapons = [
-  {name:'Pistol',rate:7,spread:0.03,pellets:1,speed:22},
-  {name:'Shotgun',rate:30,spread:0.55,pellets:9,speed:18}
-];
-let weaponIndex = 0;
-c.onwheel=e=>{
-  weaponIndex=(weaponIndex+(e.deltaY>0?1:-1)+weapons.length)%weapons.length;
-};
+/* =========================
+   KEYBOARD CONTROLS
+========================= */
+function myKeyDown(e){
+   let myImg = document.getElementById('myImg01')
 
-// ======================================================
-// BULLETS
-// ======================================================
-const bullets = [];
-class Bullet{
-  constructor(x,y,a,s){this.x=x;this.y=y;this.vx=Math.cos(a)*s;this.vy=Math.sin(a)*s;this.life=70;}
-  update(){this.x+=this.vx*timeScale;this.y+=this.vy*timeScale;this.life--;}
-  draw(){ctx.fillStyle='#0ff';ctx.fillRect(this.x-2,this.y-2,4,4);}
+   if (e.key == 'd'){
+      myImg.style.left =
+         parseInt(myImg.style.left) + 10 + 'px'
+   }
+
+   if (e.key == 'a'){
+      myImg.style.left =
+         parseInt(myImg.style.left) - 10 + 'px'
+   }
+
+   if (e.key == 'w' && myOnGround){
+      myPlayerYSpeed = -15
+      myOnGround = false
+   }
 }
 
-function enemyShoot(x,y,a){bullets.push(new Bullet(x,y,a+(Math.random()-.5)*0.1,14));}
+/* =========================
+   GAME LOOP
+========================= */
+setInterval(function(){
 
-// ======================================================
-// GORE CHUNKS (STYLIZED)
-// ======================================================
-const chunks = [];
-function gore(x,y){for(let i=0;i<6;i++)chunks.push({x,y,vx:(Math.random()-.5)*6,vy:-Math.random()*5,life:120});}
+   let myImg = document.getElementById('myImg01')
 
-// ======================================================
-// RAGDOLL PHYSICS
-// ======================================================
-class Point{
-  constructor(x,y){this.x=x;this.y=y;this.oldx=x;this.oldy=y;}
-  update(){const vx=this.x-this.oldx, vy=this.y-this.oldy;this.oldx=this.x;this.oldy=this.y;this.x+=vx;this.y+=vy+0.6*timeScale;}
-}
-class Stick{
-  constructor(a,b,l){this.a=a;this.b=b;this.l=l;}
-  solve(){const dx=this.b.x-this.a.x,dy=this.b.y-this.a.y,d=Math.hypot(dx,dy)||0.001;const diff=(this.l-d)/d*0.5;const ox=dx*diff,oy=dy*diff;this.a.x-=ox;this.a.y-=oy;this.b.x+=ox;this.b.y+=oy;}
-}
+   // gravity
+   myPlayerYSpeed += 1
+   myImg.style.top =
+      parseInt(myImg.style.top) + myPlayerYSpeed + 'px'
 
-// ======================================================
-// PLAYER
-// ======================================================
-const player = {x:120,y:420,vx:0,vy:0,w:20,h:48,g:false,cd:0,combo:0,comboTimer:0,score:0};
+   // floor
+   if (parseInt(myImg.style.top) > 300){
+      myImg.style.top = '300px'
+      myPlayerYSpeed = 0
+      myOnGround = true
+   }
 
-function updatePlayer(){
-  timeScale = keys.shift ? 0.35 : 1;
-  player.vx=((keys.a?-1:0)+(keys.d?1:0))*7;
-  player.vy+=0.9*timeScale;
-  if(keys[' ']&&player.g){player.vy=-15;player.g=false;}
-  player.x+=player.vx*timeScale;
-  player.y+=player.vy*timeScale;
-  player.g=false;
-  platforms.forEach(p=>{if(player.x>p.x&&player.x<p.x+p.w&&player.y+player.h<=p.y+10&&player.y+player.h+player.vy>=p.y){player.y=p.y-player.h;player.vy=0;player.g=true;}});
-  player.cd--;
-  if(mouse.l&&player.cd<=0){
-    const w=weapons[weaponIndex];
-    const cx=player.x+player.w/2, cy=player.y+14;
-    const a=Math.atan2(mouse.y-cy,mouse.x-cx);
-    for(let i=0;i<w.pellets;i++)bullets.push(new Bullet(cx,cy,a+(Math.random()-.5)*w.spread,w.speed));
-    player.cd=w.rate;camShake=8;
-  }
-  if(player.comboTimer>0)player.comboTimer--;else player.combo=0;
-}
+   // enemy patrol
+   let enemy = document.getElementById('myImg02')
+   enemy.style.left =
+      parseInt(enemy.style.left) + 3 + 'px'
 
-function drawPlayer(){
-  ctx.save();ctx.translate(player.x,player.y);
-  ctx.fillStyle='#444';ctx.fillRect(4,8,12,28);
-  ctx.beginPath();ctx.arc(10,4,6,0,Math.PI*2);ctx.fillStyle='#666';ctx.fill();
-  ctx.rotate(Math.atan2(mouse.y-(player.y+14),mouse.x-(player.x+10)));
-  if(weapons[weaponIndex].name==='Shotgun'){
-    ctx.fillStyle='#4b2e1e';ctx.fillRect(16,14,6,4);
-    ctx.fillStyle='#8b5a2b';ctx.fillRect(22,13,10,6);
-    ctx.fillStyle='#222';ctx.fillRect(32,14,12,3);
-  } else ctx.fillStyle='#111',ctx.fillRect(16,14,10,4);
-  ctx.restore();
-}
+   if (parseInt(enemy.style.left) > 500){
+      enemy.style.left = '250px'
+   }
 
-// ======================================================
-// ENEMY (FULLY IMPLEMENTED AI + RAGDOLL)
-// ======================================================
-class Enemy{
-  constructor(x,y){
-    this.alive=true;this.hp=3;this.state='patrol';this.dir=1;
-    this.patrolMin=x-140;this.patrolMax=x+140;this.shootCD=0;
-    this.head=new Point(x,y-18);this.torso=new Point(x,y);this.hips=new Point(x,y+22);
-    this.lArm=new Point(x-16,y);this.rArm=new Point(x+16,y);
-    this.lLeg=new Point(x-8,y+46);this.rLeg=new Point(x+8,y+46);
-    this.points=[this.head,this.torso,this.hips,this.lArm,this.rArm,this.lLeg,this.rLeg];
-    this.sticks=[
-      new Stick(this.head,this.torso,18),new Stick(this.torso,this.hips,22),
-      new Stick(this.torso,this.lArm,20),new Stick(this.torso,this.rArm,20),
-      new Stick(this.hips,this.lLeg,26),new Stick(this.hips,this.rLeg,26),
-      new Stick(this.lLeg,this.rLeg,14)
-    ];
-  }
-  update(){
-    if(this.alive){
-      const dx=player.x-this.torso.x,dist=Math.abs(dx);
-      this.state = dist<320?'chase':'patrol';
-      if(this.state==='patrol'){
-        this.torso.x+=this.dir*1.1*timeScale;
-        if(this.torso.x<this.patrolMin||this.torso.x>this.patrolMax)this.dir*=-1;
-      } else {
-        this.dir=Math.sign(dx)||this.dir;
-        this.torso.x+=this.dir*1.6*timeScale;
-        this.shootCD--;
-        if(this.shootCD<=0){this.shootCD=90;enemyShoot(this.torso.x,this.torso.y,Math.atan2(player.y-this.torso.y,player.x-this.torso.x));}
-      }
-      this.points.forEach(p=>{if(p!==this.torso)p.x+=this.dir*1.2*timeScale;});
-    }
-    this.points.forEach(p=>{p.update();solveFloor(p);});
-    for(let i=0;i<4;i++)this.sticks.forEach(s=>s.solve());
-  }
-  hit(b){
-    this.hp--;gore(b.x,b.y);
-    this.points.forEach(p=>{const dx=p.x-b.x,dy=p.y-b.y,d=Math.hypot(dx,dy);if(d<35){p.oldx=p.x-dx*2.2;p.oldy=p.y-dy*2.2;}});
-    if(this.hp<=0){this.alive=false;camShake=18;player.combo++;player.comboTimer=120;player.score+=200*player.combo;}
-  }
-  draw(){
-    ctx.strokeStyle=this.alive?'#666':'#333';ctx.lineWidth=4;ctx.beginPath();
-    this.sticks.forEach(s=>{ctx.moveTo(s.a.x,s.a.y);ctx.lineTo(s.b.x,s.b.y);});ctx.stroke();
-    ctx.fillStyle='#777';ctx.beginPath();ctx.arc(this.head.x,this.head.y,6,0,Math.PI*2);ctx.fill();
-  }
-}
+   myCheckHit()
 
-const enemies=[new Enemy(520,460),new Enemy(820,420),new Enemy(1120,360)];
-
-// ======================================================
-// LOOP
-// ======================================================
-function loop(){
-  ctx.clearRect(0,0,c.width,c.height);
-  ctx.save();applyCamera();
-  ctx.fillStyle='#1b1b1b';platforms.forEach(p=>ctx.fillRect(p.x,p.y,p.w,p.h));
-  updatePlayer();
-  enemies.forEach(e=>e.update());
-  for(let i=bullets.length-1;i>=0;i--){
-    const b=bullets[i];b.update();
-    enemies.forEach(e=>{if(!e.alive)return;e.points.forEach(p=>{if(Math.hypot(b.x-p.x,b.y-p.y)<8){e.hit(b);b.life=0;}});});
-    if(b.life<=0)bullets.splice(i,1);
-  }
-  bullets.forEach(b=>b.draw());
-  chunks.forEach(c=>{c.vy+=0.6;c.x+=c.vx;c.y+=c.vy;ctx.fillStyle='#500';ctx.fillRect(c.x,c.y,6,6);c.life--;});
-  enemies.forEach(e=>e.draw());
-  drawPlayer();
-  ctx.restore();
-  ui.innerHTML=`WEAPON: ${weapons[weaponIndex].name}<br>COMBO: x${player.combo}<br>SCORE: ${player.score}`;
-  requestAnimationFrame(loop);
-}
-loop();
+}, 50)
 </script>
-</body>
-</html>
+
+<img id="myImg01"
+style="position:absolute; width:80px; height:80px; top:300px; left:50px;"
+src="myImage01.jpg">
+
+<img id="myImg02"
+style="position:absolute; width:80px; height:80px; top:300px; left:250px;"
+src="myImage02.jpg">
+
+<br><br>
+
+<input type=button value="Scroll Background Left" onclick="{
+  clearInterval(myClock)
+  myClock = setInterval(function(){
+    myGlobalX -= 5
+    document.getElementById('myBody').style.backgroundPosition =
+      myGlobalX + 'px 0px'
+  }, 100)
+}">
