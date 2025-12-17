@@ -60,7 +60,36 @@ const player=new Player();
 addEventListener('wheel',e=>{player.weapon=(player.weapon+1)%2});
 
 // ===================== RAGDOLL =====================
-class Limb{constructor(x,y,w,h){this.x=x;this.y=y;this.w=w;this.h=h;this.vx=(Math.random()-0.5)*6;this.vy=-Math.random()*6;this.a=Math.random()*Math.PI}
+class Limb{
+ constructor(x,y,w,h){
+  this.x=x;this.y=y;this.w=w;this.h=h;
+  this.vx=(Math.random()-0.5)*6;
+  this.vy=-Math.random()*6;
+  this.a=Math.random()*Math.PI;
+  this.av=(Math.random()-0.5)*0.2;
+ }
+ u(dt){
+  this.vy+=0.9; // gravity
+  this.x+=this.vx*dt;
+  this.y+=this.vy*dt;
+  this.a+=this.av*dt;
+  // floor collision & sliding
+  if(this.y+this.h/2>floorY){
+    this.y=floorY-this.h/2;
+    this.vy*=-0.2;      // damped bounce
+    this.vx*=0.85;      // friction slide
+    this.av*=0.7;       // rotational damping
+    if(Math.abs(this.vy)<0.5) this.vy=0;
+  }
+ }
+ d(){
+  ctx.save();
+  ctx.translate(this.x,this.y);
+  ctx.rotate(this.a);
+  ctx.fillRect(-this.w/2,-this.h/2,this.w,this.h);
+  ctx.restore();
+ }
+}
  u(dt){this.vy+=0.9; this.x+=this.vx*dt; this.y+=this.vy*dt; this.a+=this.vx*0.02}
  d(){ctx.save(); ctx.translate(this.x,this.y); ctx.rotate(this.a); ctx.fillRect(-this.w/2,-this.h/2,this.w,this.h); ctx.restore()}}
 
@@ -70,16 +99,30 @@ class Enemy{constructor(x,y){this.x=x;this.y=y;this.w=36;this.h=64;this.vx=1.5;t
  this.vy+=0.9; this.x+=this.vx*dt; this.y+=this.vy*dt;
  let on=false; for(const p of platforms){ if(this.x+this.w>p.x&&this.x<p.x+p.w&&this.y+this.h>p.y&&this.y+this.h<p.y+20){ this.y=p.y-this.h; this.vy=0; on=true }}
  if(this.x<200||this.x>980)this.vx*=-1 }
- die(){ this.dead=true; const cx=this.x+this.w/2, cy=this.y+this.h/2;
+ die(b){ this.dead=true; const cx=this.x+this.w/2, cy=this.y+this.h/2;
+ const severChance = b && b.p ? 0.8 : 0.35;
+ const sever = Math.random() < severChance;
+ // base ragdoll
  this.ragdoll=[
-  new Limb(cx,cy-20,12,20), // head
+  new Limb(cx,cy-22,12,18), // head
   new Limb(cx,cy,14,30),   // torso
-  new Limb(cx-12,cy,8,26), // left arm
-  new Limb(cx+12,cy,8,26), // right arm
-  new Limb(cx-6,cy+32,10,28), // left leg
-  new Limb(cx+6,cy+32,10,28)  // right leg
- ]; camera.shake=14 }
- hit(b){this.hp--; spark(b.x,b.y,18,'#c1121f'); if(this.hp<=0) this.die()}
+  new Limb(cx-14,cy,8,26), // left arm
+  new Limb(cx+14,cy,8,26), // right arm
+  new Limb(cx-8,cy+34,10,28), // left leg
+  new Limb(cx+8,cy+34,10,28)  // right leg
+ ];
+ // dismemberment: pop one limb with impulse
+ if(sever){ const idx = Math.floor(Math.random()*this.ragdoll.length);
+   const limb = this.ragdoll.splice(idx,1)[0];
+   const ang = Math.atan2(b.y-cy,b.x-cx);
+   limb.vx += Math.cos(ang)*8; limb.vy += Math.sin(ang)*8;
+   limb.a += (Math.random()-0.5)*1.5;
+   // extra gore
+   for(let i=0;i<20;i++) spark(limb.x, limb.y, 1, '#8b0000');
+   this.ragdoll.push(limb); // keep it flying separately
+ }
+ camera.shake=16 }
+ hit(b){ this.hp--; spark(b.x,b.y,22,'#c1121f'); if(this.hp<=0) this.die(b) }
  d(){ ctx.fillStyle='#e63946'; if(this.dead){ this.ragdoll.forEach(l=>l.d()); }
  else ctx.fillRect(this.x,this.y,this.w,this.h) }}
 const enemies=[ new Enemy(520,380), new Enemy(860,300) ];
