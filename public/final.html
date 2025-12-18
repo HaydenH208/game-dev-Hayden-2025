@@ -121,8 +121,8 @@ function myCheckHit(){
 
 
 
- // moves backround
-<h1 align=center><font color=Yellow>T4A06 Bullet by Fred</font></h1>
+
+<h1 align=center><font color=Yellow>T4A06 Bullet by Fred</font></h1>   
 
 <input id="myText01" type=text value="" size=50 placeholder="Feedback here"><br>
 
@@ -137,20 +137,7 @@ function myCheckHit(){
     
 }">
 
-
-<input type=button value="Right" onTouchStart="{this.click(); event.preventDefault();}" onclick="{
-  document.getElementById('myImg01').style.left = parseInt(document.getElementById('myImg01').style.left) + 10 + 'px'
-  myCheckHit()     // checks for all collisions
-}">
-
-<input type=button value="Down" onTouchStart="{this.click(); event.preventDefault();}" onclick="{
-  document.getElementById('myImg01').style.top = parseInt(document.getElementById('myImg01').style.top) + 10 + 'px'
-  myCheckHit()     // checks for all collisions
-}">
-
-
-
-<input type=button value="shoot" onTouchStart="{this.click(); event.preventDefault();}" onclick="{
+   <input type=button value="shoot" onTouchStart="{this.click(); event.preventDefault();}" onclick="{
 
 if (myShooting > 2 ){myShooting = 1}
 
