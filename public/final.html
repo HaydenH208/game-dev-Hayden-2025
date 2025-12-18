@@ -153,6 +153,10 @@ if (myShooting == 2){
      myCheckHit() 
   }, 20)   // speed of bullet faster lower number
 }
+setTimeout(function(){
+   clearInterval(myGun01)
+   document.getElementById('myBullet02').style.left = '-200px'
+}, 1000)   // bullet lives for 1 second
 
 
 
@@ -168,6 +172,10 @@ if (myShooting == 1){
      myCheckHit() 
   }, 20)   // speed of bullet faster lower number
 }
+setTimeout(function(){
+   clearInterval(myGun01)
+   document.getElementById('myBullet01').style.left = '-200px'
+}, 1000)   // bullet lives for 1 second
 
 
 }"><br><br>
