@@ -83,6 +83,80 @@ function myCheckHit(){
    // more if statements here
 
 }
+function myShoot(){
+
+if (myShooting > 2 ){myShooting = 1}
+
+// Bullet Number 2
+if (myShooting == 2){
+  myShooting += 1
+  document.getElementById('myBullet02').style.left = document.getElementById('myImg01').style.left
+  document.getElementById('myBullet02').style.top  = document.getElementById('myImg01').style.top
+  clearInterval(myGun02)
+  myGun02 = setInterval(function(){
+     document.getElementById('myBullet02').style.left =
+     parseInt(document.getElementById('myBullet02').style.left) + 10 + 'px'
+
+     // gravity
+     document.getElementById('myBullet02').style.top =
+     parseInt(document.getElementById('myBullet02').style.top) + 3 + 'px'
+
+     myCheckHit()
+  }, 20)
+}
+
+setTimeout(function(){
+   clearInterval(myGun02)
+   document.getElementById('myBullet02').style.left = '-200px'
+}, 1000)
+
+
+// Bullet Number 1
+if (myShooting == 1){
+  myShooting += 1
+  document.getElementById('myBullet01').style.left = document.getElementById('myImg01').style.left
+  document.getElementById('myBullet01').style.top  = document.getElementById('myImg01').style.top
+  clearInterval(myGun01)
+  myGun01 = setInterval(function(){
+     document.getElementById('myBullet01').style.left =
+     parseInt(document.getElementById('myBullet01').style.left) + 10 + 'px'
+
+     // gravity
+     document.getElementById('myBullet01').style.top =
+     parseInt(document.getElementById('myBullet01').style.top) + 3 + 'px'
+
+     myCheckHit()
+  }, 20)
+}
+
+setTimeout(function(){
+   clearInterval(myGun01)
+   document.getElementById('myBullet01').style.left = '-200px'
+}, 1000)
+
+}
+function myGround(obj, groundY){
+  if (parseInt(document.getElementById(obj).style.top) > groundY){
+    document.getElementById(obj).style.top = groundY + 'px'
+  }
+}
+setInterval(function(){
+
+  // enemy 1 gravity
+  if (document.getElementById('myImg02').style.display !== 'none'){
+    document.getElementById('myImg02').style.top =
+    parseInt(document.getElementById('myImg02').style.top) + 4 + 'px'
+    myGround('myImg02', 400)
+  }
+
+  // enemy 2 gravity
+  if (document.getElementById('myImg03').style.display !== 'none'){
+    document.getElementById('myImg03').style.top =
+    parseInt(document.getElementById('myImg03').style.top) + 4 + 'px'
+    myGround('myImg03', 400)
+  }
+
+}, 50)
 
 
 </script>
@@ -90,7 +164,11 @@ function myCheckHit(){
 
 
 
-<body id="myBody" style="background-repeat:repeat; background-size: 80%" background="ignore/pukeko.jpg"  onkeydown="{
+<body <body id="myBody" style="background-repeat:repeat; background-size: 80%" 
+background="ignore/pukeko.jpg"
+oncontextmenu="event.preventDefault(); myShoot();"
+onkeydown="{ 
+
 
    document.all.myText01.value = event.key
 
@@ -110,7 +188,7 @@ function myCheckHit(){
    }  
   
   // put more here
-
+  
 
 
   myCheckHit()     // checks for all collisions
@@ -177,6 +255,10 @@ setTimeout(function(){
    document.getElementById('myBullet01').style.left = '-200px'
 }, 1000)   // bullet lives for 1 second
 
+setInterval(function(){
+  document.getElementById('myImg01').style.top =
+  parseInt(document.getElementById('myImg01').style.top) + 4 + 'px'
+}, 50)
 
 }"><br><br>
 
