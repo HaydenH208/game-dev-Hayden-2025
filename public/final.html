@@ -1,192 +1,226 @@
 <!DOCTYPE html>
 <html>
 <head>
-<title>Shark Shooter: Power-Up Edition</title>
+<title>Shark Shooter: Wave Survival</title>
 <style>
-    #overlay {
-        display: none;
-        position: fixed;
-        top: 0; left: 0; width: 100%; height: 100%;
-        background: rgba(0,0,0,0.8);
-        color: white;
-        text-align: center;
-        padding-top: 15%;
-        z-index: 100;
-        font-family: sans-serif;
+    body { background-color: #004d7a; overflow:hidden; margin:0; font-family: sans-serif; }
+    #overlay, #shopOverlay {
+        display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+        background: rgba(0,0,0,0.85); color: white; text-align: center; padding-top: 10%; z-index: 100;
     }
-    .ui-panel {
-        text-align: center; color: white; font-family: sans-serif; padding: 10px;
-        background: rgba(0,0,0,0.3);
+    #healthContainer {
+        position: fixed; top: 20px; left: 20px; width: 200px; height: 25px; 
+        background: #333; border: 2px solid white; z-index: 50;
     }
-    button { padding: 10px 20px; font-size: 16px; cursor: pointer; margin: 5px; }
+    #healthBar { width: 100%; height: 100%; background: #4CAF50; transition: width 0.3s; }
+    .ui-panel { text-align: center; color: white; padding: 10px; background: rgba(0,0,0,0.3); }
+    button { padding: 10px 20px; font-size: 16px; cursor: pointer; margin: 10px; border-radius: 5px; }
+    .shop-item { display: inline-block; width: 200px; padding: 15px; border: 1px solid white; margin: 10px; }
 </style>
 <script>
    let myScore = 10;
-   let bossHP = 3;
+   let playerMaxHealth = 10;
+   let bossHP = 5;
    let myGun01, myGun02;
    let myShooting = 1;
    let gameActive = true;
-   let endlessMode = false;
-   let enemyBaseSpeed = 0.7;
+   let inShop = false;
+   let wave = 1;
+   let enemyBaseSpeed = 0.8;
    let tripleShot = false;
+   let playerSpeed = 25;
 
    function myHitOther(my1, my2) {
        const obj1 = document.getElementById(my1).getBoundingClientRect();
        const obj2 = document.getElementById(my2).getBoundingClientRect();
-       if (obj1.left < -200 || obj2.left < -200) return false;
+       if (obj1.left < -200 || obj2.left < -200 || 
+           document.getElementById(my2).style.display === 'none') return false;
        return !(obj1.right < obj2.left || obj1.left > obj2.right || obj1.bottom < obj2.top || obj1.top > obj2.bottom);
    }
 
-   function startEndless() {
-       endlessMode = true;
-       document.getElementById('myImg04').style.display = 'none';
-       document.getElementById('endlessBtn').style.display = 'none';
-       document.getElementById('statusMsg').innerText = "SURVIVE THE SWARM!";
+   function updateUI() {
+       let hBar = document.getElementById('healthBar');
+       let pct = (myScore / playerMaxHealth) * 100;
+       hBar.style.width = pct + "%";
+       hBar.style.background = pct < 30 ? "#ff4444" : "#4CAF50";
+       document.getElementById('waveDisplay').innerText = "Wave: " + wave;
+       document.getElementById('scoreDisplay').innerText = "Score (Gold): " + myScore;
    }
 
-   function showEndScreen(message) {
-       gameActive = false;
-       document.getElementById('overlay').style.display = 'block';
-       document.getElementById('endMessage').innerText = message;
+   // --- SHOP LOGIC ---
+   function openShop() {
+       inShop = true;
+       document.getElementById('shopOverlay').style.display = 'block';
+       document.getElementById('shopGold').innerText = myScore;
    }
 
-   function myCheckHit() {
-       if (!gameActive) return;
-       document.getElementById('myText01').value = "Score: " + myScore + (endlessMode ? " | ENDLESS" : " | Boss HP: " + bossHP);
+   function closeShop() {
+       inShop = false;
+       document.getElementById('shopOverlay').style.display = 'none';
+       startWave();
+   }
 
-       let enemies = ['myImg02', 'myImg03', 'myImg05', 'myImg06', 'bossShark'];
-       
-       // Power up check
-       if (myHitOther('myImg01', 'myImgPower')) {
+   function buy(item) {
+       if (item === 'health' && myScore >= 5) {
+           myScore -= 5;
+           playerMaxHealth += 2;
+           myScore = playerMaxHealth;
+       } else if (item === 'speed' && myScore >= 10) {
+           myScore -= 10;
+           playerSpeed += 5;
+       } else if (item === 'triple' && myScore >= 15) {
+           myScore -= 15;
            tripleShot = true;
-           document.getElementById('myImgPower').style.left = '-500px';
-           document.getElementById('statusMsg').innerText = "TRIPLE SHOT ACTIVE!";
-           setTimeout(() => { tripleShot = false; document.getElementById('statusMsg').innerText = "Back to Normal Shot"; }, 10000);
        }
-
-       for (let id of enemies) {
-           if (myHitOther('myImg01', id)) {
-               document.getElementById('myImg01').style.left = '20px'; 
-               myScore -= 1;
-           }
-       }
-
-       let bullets = ['myBullet01', 'myBullet02', 'myBulletB', 'myBulletC'];
-       for (let b of bullets) {
-           for (let enemyId of enemies) {
-               if (myHitOther(b, enemyId)) {
-                   document.getElementById(b).style.left = '-500px';
-                   handleEnemyDamage(enemyId, (enemyId === 'bossShark'));
-               }
-           }
-       }
-
-       if (myScore <= 0) showEndScreen("GAME OVER!");
-       if (!endlessMode && myHitOther('myImg01', 'myImg04') && bossHP <= 0) showEndScreen("YOU WIN!");
+       document.getElementById('shopGold').innerText = myScore;
+       updateUI();
    }
 
-   function handleEnemyDamage(enemyId, isBoss) {
-        if (isBoss) {
-            bossHP -= 1;
+   // --- WAVE LOGIC ---
+   function startWave() {
+       wave++;
+       enemyBaseSpeed += 0.2;
+       let enemies = ['myImg02', 'myImg03', 'myImg05', 'myImg06'];
+       enemies.forEach(id => {
+           let e = document.getElementById(id);
+           e.style.display = 'block';
+           e.style.left = (window.innerWidth + Math.random() * 400) + "px";
+           e.style.top = Math.random() * window.innerHeight + "px";
+       });
+
+       if (wave % 5 === 0) {
+           let b = document.getElementById('bossShark');
+           b.style.display = 'block';
+           b.style.left = "1200px";
+           bossHP = 5 + wave;
+       }
+       updateUI();
+   }
+
+   function checkWaveEnd() {
+       let enemies = ['myImg02', 'myImg03', 'myImg05', 'myImg06', 'bossShark'];
+       let allDead = enemies.every(id => document.getElementById(id).style.display === 'none' || parseInt(document.getElementById(id).style.left) < -200);
+       
+       if (allDead && !inShop) {
+           if (wave % 2 === 0) openShop();
+           else startWave();
+       }
+   }
+
+   function handleEnemyDamage(enemyId) {
+        if (enemyId === 'bossShark') {
+            bossHP--;
             if (bossHP <= 0) {
-                if (endlessMode) respawnEnemy(enemyId);
-                else document.getElementById(enemyId).style.left = '-9999px';
-                myScore += 5;
+                document.getElementById(enemyId).style.display = 'none';
+                myScore += 20;
             }
         } else {
-            if (endlessMode) respawnEnemy(enemyId);
-            else document.getElementById(enemyId).style.left = '-9999px';
-            myScore += 1;
+            document.getElementById(enemyId).style.display = 'none';
+            myScore += 2;
         }
+        checkWaveEnd();
    }
 
-   function respawnEnemy(id) {
-       let e = document.getElementById(id);
-       e.style.left = (window.innerWidth + 100) + 'px';
-       e.style.top = Math.random() * (window.innerHeight - 150) + 'px';
-       enemyBaseSpeed += 0.05;
-   }
-
-   function fireBullet(id, startX, startY, moveX, moveY) {
+   function fireBullet(id, sX, sY, vX, vY) {
        let b = document.getElementById(id);
-       b.style.left = startX + 'px';
-       b.style.top = startY + 'px';
+       b.style.left = sX + 'px'; b.style.top = sY + 'px';
        let timer = setInterval(() => {
-           if (!gameActive) { clearInterval(timer); return; }
-           b.style.left = parseFloat(b.style.left) + moveX + 'px';
-           b.style.top = parseFloat(b.style.top) + moveY + 'px';
-           myCheckHit();
+           if (!gameActive || inShop) { clearInterval(timer); return; }
+           b.style.left = parseFloat(b.style.left) + vX + 'px';
+           b.style.top = parseFloat(b.style.top) + vY + 'px';
+           
+           let enemies = ['myImg02', 'myImg03', 'myImg05', 'myImg06', 'bossShark'];
+           enemies.forEach(eId => {
+               if (myHitOther(id, eId)) {
+                   b.style.left = "-500px";
+                   clearInterval(timer);
+                   handleEnemyDamage(eId);
+               }
+           });
        }, 20);
-       setTimeout(() => { clearInterval(timer); b.style.left = '-500px'; }, 5000);
-       return timer;
+       setTimeout(() => { clearInterval(timer); b.style.left = '-500px'; }, 4000);
    }
 
    function myShoot(event) {
-       if (!gameActive || event.target.tagName == 'BUTTON') return;
-       
+       if (!gameActive || inShop || event.target.tagName == 'BUTTON') return;
        let pRect = document.getElementById('myImg01').getBoundingClientRect();
        let sX = pRect.left + 30, sY = pRect.top + 30;
        let dX = event.clientX - sX, dY = event.clientY - sY;
        let dist = Math.sqrt(dX*dX + dY*dY);
        let vX = (dX/dist)*15, vY = (dY/dist)*15;
 
-       let bId = (myShooting == 1) ? 'myBullet01' : 'myBullet02';
-       clearInterval(myShooting == 1 ? myGun01 : myGun02);
-       let t = fireBullet(bId, sX, sY, vX, vY);
-       if (myShooting == 1) myGun01 = t; else myGun02 = t;
-
+       fireBullet('myBullet01', sX, sY, vX, vY);
        if (tripleShot) {
-           fireBullet('myBulletB', sX, sY, vX, vY - 5);
-           fireBullet('myBulletC', sX, sY, vX, vY + 5);
+           fireBullet('myBulletB', sX, sY, vX, vY - 4);
+           fireBullet('myBulletC', sX, sY, vX, vY + 4);
        }
-       myShooting = (myShooting == 1) ? 2 : 1;
    }
-
-   setInterval(() => {
-       if (!gameActive) return;
-       let p = document.getElementById('myImg01');
-       if (parseFloat(p.style.top) < 500) p.style.top = (parseFloat(p.style.top) + 2) + 'px';
-       
-       let ids = ['myImg02', 'myImg03', 'myImg05', 'myImg06'];
-       for(let id of ids) moveEnemy(id, enemyBaseSpeed);
-       moveEnemy('bossShark', enemyBaseSpeed * 0.4);
-
-       // Random Powerup spawn
-       if (Math.random() < 0.005 && parseFloat(document.getElementById('myImgPower').style.left) < 0) {
-           document.getElementById('myImgPower').style.left = '800px';
-           document.getElementById('myImgPower').style.top = '300px';
-       }
-   }, 40);
 
    function moveEnemy(id, speed) {
        let e = document.getElementById(id), p = document.getElementById('myImg01');
+       if (e.style.display === 'none') return;
        let ex = parseFloat(e.style.left), ey = parseFloat(e.style.top);
-       if (ex < -200) { if(endlessMode) respawnEnemy(id); return; }
        let px = parseFloat(p.style.left), py = parseFloat(p.style.top);
        e.style.left = (ex < px ? ex + speed : ex - speed) + 'px';
        e.style.top = (ey < py ? ey + speed : ey - speed) + 'px';
+       if (myHitOther('myImg01', id)) {
+           p.style.left = '20px'; myScore--; updateUI();
+           if (myScore <= 0) { gameActive = false; document.getElementById('overlay').style.display='block'; }
+       }
    }
+
+   setInterval(() => {
+       if (!gameActive || inShop) return;
+       let p = document.getElementById('myImg01');
+       if (parseFloat(p.style.top) < 550) p.style.top = (parseFloat(p.style.top) + 2) + 'px';
+       
+       ['myImg02', 'myImg03', 'myImg05', 'myImg06'].forEach(id => moveEnemy(id, enemyBaseSpeed));
+       moveEnemy('bossShark', enemyBaseSpeed * 0.4);
+   }, 40);
 </script>
 </head>
 
-<body id="myBody" style="background-color: #004d7a; overflow:hidden; margin:0;" onclick="myShoot(event)" onkeydown="
-    if (!gameActive) return;
+<body onclick="myShoot(event)" onkeydown="
+    if(!gameActive || inShop) return;
     let p = document.getElementById('myImg01');
-    if (event.key == 'd') p.style.left = (parseFloat(p.style.left) || 0) + 25 + 'px';
-    if (event.key == 'a') p.style.left = (parseFloat(p.style.left) || 0) - 25 + 'px';
-    if (event.key == 'w') p.style.top = (parseFloat(p.style.top) || 0) - 50 + 'px';
-    if (event.key == 's') p.style.top = (parseFloat(p.style.top) || 0) + 25 + 'px';
+    if (event.key == 'd') p.style.left = (parseFloat(p.style.left)||0) + playerSpeed + 'px';
+    if (event.key == 'a') p.style.left = (parseFloat(p.style.left)||0) - playerSpeed + 'px';
+    if (event.key == 'w') p.style.top = (parseFloat(p.style.top)||0) - 60 + 'px';
+    if (event.key == 's') p.style.top = (parseFloat(p.style.top)||0) + playerSpeed + 'px';
 ">
 
-<div id="overlay">
-    <h1 id="endMessage">GAME OVER</h1>
-    <button onclick="location.reload()">Restart</button>
-</div>
+<div id="healthContainer"><div id="healthBar"></div></div>
 
 <div class="ui-panel">
-    <h2 id="statusMsg">SHARK ATTACK</h2>
-    <input id="myText01" type="text" value="Score: 10" readonly style="text-align:center; width:350px;">
-    <button id="endlessBtn" onclick="startEndless()">Endless Mode</button>
+    <span id="waveDisplay" style="font-size: 24px; margin-right: 20px;">Wave: 1</span>
+    <span id="scoreDisplay" style="font-size: 24px;">Score (Gold): 10</span>
+</div>
+
+<div id="shopOverlay">
+    <h1>WAVE CLEARED - WELCOME TO THE SHOP</h1>
+    <p>Gold: <span id="shopGold">0</span></p>
+    <div class="shop-item">
+        <h3>Extra Health</h3>
+        <p>Cost: 5 Gold</p>
+        <button onclick="buy('health')">Buy</button>
+    </div>
+    <div class="shop-item">
+        <h3>Swim Speed</h3>
+        <p>Cost: 10 Gold</p>
+        <button onclick="buy('speed')">Buy</button>
+    </div>
+    <div class="shop-item">
+        <h3>Triple Shot</h3>
+        <p>Cost: 15 Gold</p>
+        <button onclick="buy('triple')">Buy</button>
+    </div>
+    <br><br>
+    <button onclick="closeShop()" style="background: #4CAF50; color: white;">NEXT WAVE</button>
+</div>
+
+<div id="overlay">
+    <h1>GAME OVER</h1>
+    <button onclick="location.reload()">RESTART</button>
 </div>
 
 <img id="myImg01" src="ignore/meowl.png" style="position:absolute; width:60px; height:60px; left:50px; top:200px;">
@@ -194,12 +228,9 @@
 <img id="myImg03" src="ignore/BaskingShark.jpg" style="position:absolute; width:80px; height:40px; left:700px; top:300px;">
 <img id="myImg05" src="ignore/BaskingShark.jpg" style="position:absolute; width:80px; height:40px; left:800px; top:50px;">
 <img id="myImg06" src="ignore/BaskingShark.jpg" style="position:absolute; width:80px; height:40px; left:850px; top:400px;">
-<img id="bossShark" src="ignore/BaskingShark.jpg" style="position:absolute; width:180px; height:100px; left:900px; top:200px; border:4px solid yellow;">
-<img id="myImg04" src="ignore/liljit.jpg" style="position:absolute; width:60px; height:60px; left:1100px; top:500px;">
-<img id="myImgPower" src="ignore/pukeko.jpg" style="position:absolute; width:40px; height:40px; left:-500px; border:2px solid gold;">
+<img id="bossShark" src="ignore/BaskingShark.jpg" style="position:absolute; width:220px; height:120px; left:1200px; top:200px; border:4px solid red; display:none;">
 
 <div id="myBullet01" style="position:absolute; width:12px; height:12px; background:yellow; border-radius:50%; left:-500px;"></div>
-<div id="myBullet02" style="position:absolute; width:12px; height:12px; background:yellow; border-radius:50%; left:-500px;"></div>
 <div id="myBulletB" style="position:absolute; width:12px; height:12px; background:orange; border-radius:50%; left:-500px;"></div>
 <div id="myBulletC" style="position:absolute; width:12px; height:12px; background:orange; border-radius:50%; left:-500px;"></div>
 
