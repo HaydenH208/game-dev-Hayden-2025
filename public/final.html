@@ -1,20 +1,21 @@
 <!DOCTYPE html>
 <html>
 <head>
-<title>Shark Shooter</title>
+<title>Shark Shooter: Boss Battle</title>
 <script>
-   // global variables
+   // --- GLOBAL VARIABLES ---
    let myScore = 10
+   let bossHP = 3  // Boss takes 3 hits
    let myGun01, myGun02
    let myShooting = 1
 
-   // --- COLLISION CHECKER ---
+   // --- COLLISION DETECTOR ---
    function myHitOther(my1, my2) {
        const obj1 = document.getElementById(my1).getBoundingClientRect();
        const obj2 = document.getElementById(my2).getBoundingClientRect();
 
-       // If either object is off-screen (dead), no collision
-       if (obj1.left < -100 || obj2.left < -100) return false;
+       // If object is off-screen, ignore collision
+       if (obj1.left < -200 || obj2.left < -200) return false;
 
        return !(obj1.right < obj2.left || 
                 obj1.left > obj2.right || 
@@ -24,85 +25,126 @@
 
    function myCheckHit() {
        let status = document.getElementById('myText01');
-       status.value = "Score: " + myScore;
+       status.value = "Score: " + myScore + " | Boss HP: " + bossHP;
 
-       // List of all enemies
-       const enemies = ['myImg02', 'myImg03', 'myImg05', 'myImg06'];
-
-       // --- CHECK COLLISIONS ---
+       // 1. Check Player vs Enemies
+       let enemies = ['myImg02', 'myImg03', 'myImg05', 'myImg06', 'bossShark'];
+       
        for (let i = 0; i < enemies.length; i++) {
-           let enemyID = enemies[i];
-           let enemy = document.getElementById(enemyID);
-
-           // 1. Player hits Enemy
-           if (myHitOther('myImg01', enemyID)) {
-               document.getElementById('myImg01').style.left = '20px'; // Reset player
-               status.value = 'Ouch! -1 Score';
+           let enemyId = enemies[i];
+           if (myHitOther('myImg01', enemyId)) {
+               document.getElementById('myImg01').style.left = '20px'; 
+               status.value = 'You got bit! -1 Score';
                myScore -= 1;
-           }
-
-           // 2. Bullet hits Enemy
-           if (myHitOther('myBullet01', enemyID) || myHitOther('myBullet02', enemyID)) {
-               // Move enemy off screen ("Kill" it)
-               enemy.style.left = '-9999px'; 
-               status.value = 'Shark Down! +1 Score';
-               myScore += 1;
-               
-               // Reset bullets so they don't kill multiple in one shot
-               document.getElementById('myBullet01').style.left = '-200px';
-               document.getElementById('myBullet02').style.left = '-200px';
            }
        }
 
-       // --- WIN / LOSE ---
+       // 2. Check Bullets vs Normal Sharks
+       let smallSharks = ['myImg02', 'myImg03', 'myImg05', 'myImg06'];
+       for (let i = 0; i < smallSharks.length; i++) {
+           checkBulletHit(smallSharks[i], false); // false = not a boss
+       }
+
+       // 3. Check Bullets vs Boss
+       checkBulletHit('bossShark', true); // true = is boss
+
+       // Win / Lose
        if (myScore <= 0) {
            alert('Game Over!');
            location.reload();
        }
-
        if (myHitOther('myImg01', 'myImg04')) {
-           alert('You Win! Next Level...');
-           location = 'https://www.google.ca';
+           if (bossHP > 0) {
+               status.value = "You can't leave until the Boss is dead!";
+           } else {
+               alert('You Win! Level Complete.');
+               location = 'https://www.google.ca';
+           }
        }
    }
 
-   // --- SHOOTING LOGIC ---
-   function myShoot() {
+   // Helper function for bullet collisions
+   function checkBulletHit(enemyId, isBoss) {
+       let enemy = document.getElementById(enemyId);
+       let b1 = 'myBullet01';
+       let b2 = 'myBullet02';
+
+       if (myHitOther(b1, enemyId) || myHitOther(b2, enemyId)) {
+           // Hide bullets immediately
+           document.getElementById(b1).style.left = '-200px';
+           document.getElementById(b2).style.left = '-200px';
+
+           if (isBoss) {
+               bossHP -= 1;
+               if (bossHP <= 0) {
+                   enemy.style.left = '-9999px'; // Kill Boss
+                   myScore += 5;
+               } 
+           } else {
+               enemy.style.left = '-9999px'; // Kill Normal Shark
+               myScore += 1;
+           }
+       }
+   }
+
+   // --- SHOOTING WITH MOUSE AIM ---
+   function myShoot(event) {
+       // Prevent shooting if clicking buttons
+       if (event.target.tagName == 'INPUT') return;
+
        if (myShooting > 2) { myShooting = 1 }
        let bulletId = (myShooting == 1) ? 'myBullet01' : 'myBullet02';
-       let player = document.getElementById('myImg01');
        let bullet = document.getElementById(bulletId);
+       let player = document.getElementById('myImg01');
 
-       // Reset bullet position to player
-       bullet.style.left = player.style.left;
-       bullet.style.top = player.style.top;
-
-       // Clear old timer and start new one
-       if (myShooting == 1) {
-           clearInterval(myGun01);
-           myGun01 = setInterval(() => { 
-               bullet.style.left = parseInt(bullet.style.left) + 20 + 'px'; 
-               myCheckHit();
-           }, 20);
-       } else {
-           clearInterval(myGun02);
-           myGun02 = setInterval(() => { 
-               bullet.style.left = parseInt(bullet.style.left) + 20 + 'px'; 
-               myCheckHit();
-           }, 20);
-       }
+       // 1. Start bullet at Player center
+       let pRect = player.getBoundingClientRect();
+       let startX = pRect.left + (pRect.width / 2);
+       let startY = pRect.top + (pRect.height / 2);
        
-       // Bullet disappears after 1 second
-       setTimeout(() => { bullet.style.left = '-200px'; }, 1000);
+       bullet.style.left = startX + 'px';
+       bullet.style.top = startY + 'px';
+
+       // 2. Calculate Direction (Vector Math)
+       let mouseX = event.clientX;
+       let mouseY = event.clientY;
+       
+       let diffX = mouseX - startX;
+       let diffY = mouseY - startY;
+
+       // Calculate distance to normalize the speed
+       let dist = Math.sqrt((diffX * diffX) + (diffY * diffY));
+       
+       // Speed of bullet (20)
+       let speed = 20;
+       let moveX = (diffX / dist) * speed;
+       let moveY = (diffY / dist) * speed;
+
+       // 3. Fire the interval
+       let currentGun = (myShooting == 1) ? myGun01 : myGun02;
+       clearInterval(currentGun);
+
+       let intervalFunc = setInterval(() => {
+           bullet.style.left = parseFloat(bullet.style.left) + moveX + 'px';
+           bullet.style.top = parseFloat(bullet.style.top) + moveY + 'px';
+           myCheckHit();
+       }, 20);
+
+       if (myShooting == 1) myGun01 = intervalFunc;
+       else myGun02 = intervalFunc;
+
+       // Bullet dies after 1.5 seconds
+       setTimeout(() => { clearInterval(intervalFunc); bullet.style.left = '-200px'; }, 1500);
+
        myShooting++;
    }
 
-   // --- ENEMY AI (PATHFINDING) ---
-   function moveEnemy(enemyID) {
+   // --- ENEMY AI ---
+   function moveEnemy(enemyID, speed) {
        let enemy = document.getElementById(enemyID);
        let player = document.getElementById('myImg01');
 
-       // Skip moving if enemy is "dead" (off screen)
+       // If enemy dead, stop moving
        if (parseInt(enemy.style.left) < -100) return;
 
        let enemyX = parseInt(enemy.style.left);
@@ -110,68 +152,55 @@
        let playerX = parseInt(player.style.left);
        let playerY = parseInt(player.style.top);
 
-       // Move toward player X
-       if (enemyX < playerX) enemy.style.left = (enemyX + 1) + 'px';
-       if (enemyX > playerX) enemy.style.left = (enemyX - 1) + 'px';
-
-       // Move toward player Y (slowly)
-       if (enemyY < playerY) enemy.style.top = (enemyY + 1) + 'px';
-       if (enemyY > playerY) enemy.style.top = (enemyY - 1) + 'px';
+       // Simple Chase Logic
+       if (enemyX < playerX) enemy.style.left = (enemyX + speed) + 'px';
+       if (enemyX > playerX) enemy.style.left = (enemyX - speed) + 'px';
+       if (enemyY < playerY) enemy.style.top = (enemyY + speed) + 'px';
+       if (enemyY > playerY) enemy.style.top = (enemyY - speed) + 'px';
    }
 
-   // --- GAME LOOP (Runs every 50ms) ---
+   // --- GAME LOOP ---
    setInterval(function() {
-       // Gravity for Player
+       // Player Gravity
        let player = document.getElementById('myImg01');
-       let currentTop = parseInt(player.style.top);
-       if (currentTop < 400) { // Floor check
-           player.style.top = (currentTop + 2) + 'px';
+       if (parseInt(player.style.top) < 400) {
+           player.style.top = (parseInt(player.style.top) + 2) + 'px';
        }
 
-       // Move all enemies
-       moveEnemy('myImg02');
-       moveEnemy('myImg03');
-       moveEnemy('myImg05');
-       moveEnemy('myImg06');
+       // Move Normal Sharks (Speed 1)
+       moveEnemy('myImg02', 1);
+       moveEnemy('myImg03', 1);
+       moveEnemy('myImg05', 1);
+       moveEnemy('myImg06', 1);
 
-   }, 50);
+       // Move Boss Shark (Speed 0.5 - Slower because he's big)
+       moveEnemy('bossShark', 0.5);
+
+   }, 40);
 
 </script>
 </head>
 
-<body id="myBody" style="background-color: #87CEEB;" 
-      onclick="myShoot()"
+<body id="myBody" style="background-color: #87CEEB; overflow:hidden;" 
+      onclick="myShoot(event)"
       onkeydown="
-        // WASD Controls
         let p = document.getElementById('myImg01');
         if (event.key == 'd') p.style.left = parseInt(p.style.left) + 15 + 'px';
         if (event.key == 'a') p.style.left = parseInt(p.style.left) - 15 + 'px';
-        if (event.key == 'w') p.style.top = parseInt(p.style.top) - 30 + 'px'; // Jump
+        if (event.key == 'w') p.style.top = parseInt(p.style.top) - 30 + 'px';
         if (event.key == 's') p.style.top = parseInt(p.style.top) + 15 + 'px';
-        
-        if (event.key == ' ') myShoot();
         myCheckHit();
       ">
 
-<h1 align="center" style="font-family:sans-serif; color:white; text-shadow: 2px 2px black;">Shark Attack</h1>
+<h1 align="center" style="color:white; text-shadow: 2px 2px black; pointer-events:none;">BOSS BATTLE</h1>
 
-<div align="center">
-    <input id="myText01" type="text" value="Score: 10" size="50" readonly 
-           style="font-size:20px; text-align:center; font-weight:bold;"><br><br>
-    <p><b>WASD</b> to Move | <b>Click/Space</b> to Shoot</p>
+<div align="center" style="pointer-events:none;">
+    <input id="myText01" type="text" value="Score: 10 | Boss HP: 3" size="50" readonly 
+           style="font-size:20px; text-align:center; font-weight:bold; pointer-events:auto;">
+    <br>
+    <p><b>WASD</b> to Move | <b>Click ANYWHERE</b> to Shoot at mouse</p>
 </div>
 
 <img id="myImg01" src="ignore/meowl.png" style="position:absolute; width:60px; height:60px; left: 50px; top:200px; z-index:10;">
 
-<img id="myImg02" src="ignore/BaskingShark.jpg" style="position:absolute; width:80px; height:50px; left:600px; top:100px;">
-<img id="myImg03" src="ignore/BaskingShark.jpg" style="position:absolute; width:80px; height:50px; left:600px; top:300px;">
-<img id="myImg05" src="ignore/BaskingShark.jpg" style="position:absolute; width:80px; height:50px; left:750px; top:50px;">
-<img id="myImg06" src="ignore/BaskingShark.jpg" style="position:absolute; width:80px; height:50px; left:750px; top:350px;">
-
-<img id="myImg04" src="ignore/liljit.jpg" style="position:absolute; width:60px; height:60px; left:800px; top:400px; border:2px solid gold;">
-
-<img id="myBullet01" src="blossom.jpg" style="position:absolute; width:15px; height:15px; left:-200px; top:0px; border-radius:50%; background:red;">
-<img id="myBullet02" src="blossom.jpg" style="position:absolute; width:15px; height:15px; left:-200px; top:0px; border-radius:50%; background:red;">
-
-</body>
-</html>
+<img id="myImg02" src="ignore/BaskingShark.
