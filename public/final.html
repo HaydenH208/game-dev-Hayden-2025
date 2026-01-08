@@ -12,6 +12,7 @@
 
    // COLLISION CHECK
    function myHitOther(my1, my2) {
+       // Using getBoundingClientRect is much more accurate than style.left
        const obj1 = document.getElementById(my1).getBoundingClientRect();
        const obj2 = document.getElementById(my2).getBoundingClientRect();
 
@@ -25,24 +26,39 @@
        let status = document.getElementById('myText01');
        status.value = "Score: " + myScore;
 
-       // Player hits Enemy 1 or 2
+       // --- PLAYER COLLISIONS ---
+       // Player hits Enemy 1 (Img02) or Enemy 2 (Img03)
        if (myHitOther('myImg01', 'myImg02') || myHitOther('myImg01', 'myImg03')) {
            document.getElementById('myImg01').style.left = '20px';
            status.value = 'Hit an enemy! -1 Score';
            myScore -= 1;
        }
 
-       // Bullet hits Enemy 3
+       // --- BULLET COLLISIONS ---
+       
+       // Bullet 1 hits Enemy 2 (Shark 2)
        if (myHitOther('myBullet01', 'myImg03')) {
-           clearInterval(myGun01);
-           document.getElementById('myBullet01').style.left = '-200px';
-           status.value = 'Target Down! +1 Score';
+           resetBullet('myBullet01', myGun01);
+           status.value = 'Shark 2 Down! +1 Score';
            myScore += 1;
        }
+       // Bullet 2 hits Enemy 2 (Shark 2)
        if (myHitOther('myBullet02', 'myImg03')) {
-           clearInterval(myGun02);
-           document.getElementById('myBullet02').style.left = '-200px';
-           status.value = 'Target Down! +1 Score';
+           resetBullet('myBullet02', myGun02);
+           status.value = 'Shark 2 Down! +1 Score';
+           myScore += 1;
+       }
+
+       // Bullet 1 hits Enemy 1 (Shark 1) - THIS WAS MISSING
+       if (myHitOther('myBullet01', 'myImg02')) {
+           resetBullet('myBullet01', myGun01);
+           status.value = 'Shark 1 Down! +1 Score';
+           myScore += 1;
+       }
+       // Bullet 2 hits Enemy 1 (Shark 1) - THIS WAS MISSING
+       if (myHitOther('myBullet02', 'myImg02')) {
+           resetBullet('myBullet02', myGun02);
+           status.value = 'Shark 1 Down! +1 Score';
            myScore += 1;
        }
 
@@ -58,34 +74,42 @@
        }
    }
 
+   // Helper to reset bullet
+   function resetBullet(bulletName, gunTimer) {
+        clearInterval(gunTimer);
+        document.getElementById(bulletName).style.left = '-200px';
+   }
+
    function myShoot() {
        if (myShooting > 2) { myShooting = 1 }
 
        let bulletId = (myShooting == 1) ? 'myBullet01' : 'myBullet02';
-       let gunTimer = (myShooting == 1) ? myGun01 : myGun02;
        
        let player = document.getElementById('myImg01');
        let bullet = document.getElementById(bulletId);
 
+       // Start bullet at player position
        bullet.style.left = player.style.left;
        bullet.style.top = player.style.top;
 
        if (myShooting == 1) {
            clearInterval(myGun01);
            myGun01 = setInterval(() => { moveBullet('myBullet01') }, 20);
-           setTimeout(() => { clearInterval(myGun01); bullet.style.left = '-200px'; }, 1000);
+           // Bullet dies after 1 second
+           setTimeout(() => { resetBullet('myBullet01', myGun01) }, 1000);
        } else {
            clearInterval(myGun02);
            myGun02 = setInterval(() => { moveBullet('myBullet02') }, 20);
-           setTimeout(() => { clearInterval(myGun02); bullet.style.left = '-200px'; }, 1000);
+           // Bullet dies after 1 second
+           setTimeout(() => { resetBullet('myBullet02', myGun02) }, 1000);
        }
        myShooting++;
    }
 
    function moveBullet(id) {
        let b = document.getElementById(id);
-       b.style.left = parseInt(b.style.left) + 10 + 'px';
-       b.style.top = parseInt(b.style.top) + 2 + 'px'; // small gravity effect
+       b.style.left = parseInt(b.style.left) + 15 + 'px'; // Increased speed slightly
+       // REMOVED GRAVITY (style.top) HERE so it flies straight
        myCheckHit();
    }
 
@@ -100,7 +124,7 @@
        // Player Gravity
        let player = document.getElementById('myImg01');
        player.style.top = parseInt(player.style.top) + 2 + 'px';
-       myGround('myImg01', 400);
+       myGround('myImg01', 400); // Floor is at 400px
 
        // Enemy Gravity
        myGround('myImg02', 400);
@@ -113,12 +137,17 @@
 </head>
 
 <body id="myBody" style="background-color: #f0f0f0;" 
-      oncontextmenu="event.preventDefault(); myShoot();"
+      onclick="myShoot()"
       onkeydown="
+        // WASD Controls
         if (event.key == 'd') document.getElementById('myImg01').style.left = parseInt(document.getElementById('myImg01').style.left) + 15 + 'px';
         if (event.key == 'a') document.getElementById('myImg01').style.left = parseInt(document.getElementById('myImg01').style.left) - 15 + 'px';
         if (event.key == 'w') document.getElementById('myImg01').style.top = parseInt(document.getElementById('myImg01').style.top) - 30 + 'px';
         if (event.key == 's') document.getElementById('myImg01').style.top = parseInt(document.getElementById('myImg01').style.top) + 15 + 'px';
+        
+        // Spacebar to shoot
+        if (event.key == ' ') myShoot();
+
         myCheckHit();
       ">
 
@@ -126,7 +155,7 @@
 
 <div align="center">
     <input id="myText01" type="text" value="Score: 10" size="50" readonly><br><br>
-    <input type="button" value="Shoot (Or Right-Click)" onclick="myShoot()">
+    <p>Use WASD to Move, Left Click or Spacebar to Shoot</p>
 </div>
 
 <img id="myImg01" src="ignore/meowl.png" style="position:absolute; width:100px; height:80px; left: 10px; top:190px;">
