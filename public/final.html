@@ -1,32 +1,28 @@
 <!DOCTYPE html>
 <html>
 <head>
-<title>Shark Hunter: Boss Update</title>
+<title>Shark Hunter: Level Progression</title>
 <style>
     body { background-color: #004d7a; overflow:hidden; margin:0; font-family: 'Segoe UI', sans-serif; }
     
-    #menu, #overlay, #shopOverlay, #victoryOverlay {
+    #overlay, #shopOverlay, #victoryOverlay, #levelTransition {
         position: fixed; top: 0; left: 0; width: 100%; height: 100%;
         background: rgba(0,20,40,0.9); color: white; text-align: center; 
-        padding-top: 10%; z-index: 200;
+        padding-top: 10%; z-index: 200; display: none;
     }
-    #overlay, #victoryOverlay { display: none; } 
 
-    /* UI Elements */
     #healthContainer {
         position: fixed; top: 20px; left: 20px; width: 200px; height: 25px; 
         background: #333; border: 2px solid white; z-index: 50;
     }
     #healthBar { width: 100%; height: 100%; background: #4CAF50; transition: width 0.3s; }
     
-    /* Boss Health Bar */
     #bossUI {
         position: fixed; top: 20px; left: 50%; transform: translateX(-50%);
         width: 400px; display: none; text-align: center; z-index: 100;
     }
     #bossHealthContainer { width: 100%; height: 20px; background: #333; border: 2px solid #ff4444; }
     #bossHealthBar { width: 100%; height: 100%; background: #ff4444; transition: width 0.2s; }
-    #bossUI label { color: white; font-weight: bold; text-transform: uppercase; display: block; margin-bottom: 5px; }
 
     .stats { 
         position: fixed; top: 10px; right: 20px; color: white; text-align: right;
@@ -53,10 +49,10 @@
    let playerMaxHealth = 10;
    let bossHP = 15;
    let bossMaxHP = 15;
-   let gameActive = false;
+   let gameActive = true;
    let inShop = false;
    let endlessMode = false;
-   let wave = 1;
+   let wave = 0;
    let enemyBaseSpeed = 0.8;
    let tripleShot = false;
    let playerSpeed = 25;
@@ -69,48 +65,32 @@
 
    function updateUI() {
        document.getElementById('healthBar').style.width = Math.max(0, (playerHealth / playerMaxHealth) * 100) + "%";
-       
-       // Handle Boss UI
        let bUI = document.getElementById('bossUI');
        let boss = document.getElementById('bossShark');
        if (boss.style.display !== 'none') {
            bUI.style.display = 'block';
            document.getElementById('bossHealthBar').style.width = Math.max(0, (bossHP / bossMaxHP) * 100) + "%";
-       } else {
-           bUI.style.display = 'none';
-       }
+       } else { bUI.style.display = 'none'; }
 
-       let bWave = localStorage.getItem('sharkBestWave') || 0;
-       let bGold = localStorage.getItem('sharkBestGold') || 0;
-       document.getElementById('waveDisplay').innerText = endlessMode ? "Wave: " + wave : "Story Mode";
+       document.getElementById('waveDisplay').innerText = endlessMode ? "Wave: " + wave : "Level 1: The Hunt";
        document.getElementById('scoreDisplay').innerText = "Gold: " + myGold;
-       document.getElementById('highScoreDisplay').innerHTML = `<span class="best">BEST WAVE: ${bWave}</span><br><span class="best">BEST GOLD: ${bGold}</span>`;
+       let bWave = localStorage.getItem('sharkBestWave') || 0;
+       document.getElementById('highScoreDisplay').innerHTML = `<span class="best">BEST WAVE: ${bWave}</span>`;
    }
 
-   function selectMode(isEndless) {
-       endlessMode = isEndless;
-       document.getElementById('menu').style.display = 'none';
-       gameActive = true;
-       if (endlessMode) { 
-           wave = 0; startWave(); 
-       } else {
-           document.getElementById('myImg04').style.display = 'block';
-           document.getElementById('bossShark').style.display = 'block';
-           bossHP = 15; bossMaxHP = 15;
-       }
+   // Starts Story Mode immediately
+   function initGame() {
+       document.getElementById('bossShark').style.display = 'block';
+       document.getElementById('myImg04').style.display = 'block';
        updateUI();
    }
 
-   function spawnShark(id) {
-       let img = document.createElement('img');
-       img.id = id;
-       img.src = "ignore/BaskingShark.jpg";
-       img.onerror = function() { fixImg(this, 'Shark', '224466'); };
-       img.style.position = "absolute"; img.style.width = "80px"; img.style.height = "40px";
-       img.style.left = (window.innerWidth + Math.random() * 500) + "px";
-       img.style.top = Math.random() * (window.innerHeight - 100) + "px";
-       document.body.appendChild(img);
-       activeEnemies.push(id);
+   function startEndlessMode() {
+       endlessMode = true;
+       wave = 0;
+       document.getElementById('levelTransition').style.display = 'none';
+       gameActive = true;
+       startWave();
    }
 
    function startWave() {
@@ -127,10 +107,15 @@
        updateUI();
    }
 
-   function myHitOther(my1, my2) {
-       const b1 = document.getElementById(my1).getBoundingClientRect();
-       const b2 = document.getElementById(my2).getBoundingClientRect();
-       return !(b1.right < b2.left || b1.left > b2.right || b1.bottom < b2.top || b1.top > b2.bottom);
+   function spawnShark(id) {
+       let img = document.createElement('img');
+       img.id = id; img.src = "ignore/BaskingShark.jpg";
+       img.onerror = function() { fixImg(this, 'Shark', '224466'); };
+       img.style.position = "absolute"; img.style.width = "80px"; img.style.height = "40px";
+       img.style.left = (window.innerWidth + Math.random() * 500) + "px";
+       img.style.top = Math.random() * (window.innerHeight - 100) + "px";
+       document.body.appendChild(img);
+       activeEnemies.push(id);
    }
 
    function myShoot(event) {
@@ -140,8 +125,7 @@
        let dX = event.clientX - sX, dY = event.clientY - sY;
        let angle = Math.atan2(dY, dX);
        let dist = Math.sqrt(dX*dX + dY*dY);
-       let vX = (dX/dist)*22, vY = (dY/dist)*22; // Faster projectile speed
-
+       let vX = (dX/dist)*22, vY = (dY/dist)*22;
        fireHarpoon('hp1', sX, sY, vX, vY, angle);
        if (tripleShot) {
            fireHarpoon('hpB', sX, sY, vX, vY - 2, angle - 0.1);
@@ -153,29 +137,34 @@
        let h = document.getElementById(id);
        h.style.left = sX + 'px'; h.style.top = sY + 'px';
        h.style.transform = `rotate(${angle}rad)`;
-       
        let lifespan = 0;
        let timer = setInterval(() => {
            lifespan++;
-           if (!gameActive || lifespan > 100) { clearInterval(timer); h.style.left = "-500px"; return; }
-           
+           if (!gameActive || lifespan > 120) { clearInterval(timer); h.style.left = "-500px"; return; }
            h.style.left = parseFloat(h.style.left) + vX + 'px';
            h.style.top = parseFloat(h.style.top) + vY + 'px';
-           
            activeEnemies.forEach((eId, index) => {
                if (myHitOther(id, eId)) { h.style.left = "-500px"; clearInterval(timer); killEnemy(eId, index); }
            });
-           
            let boss = document.getElementById('bossShark');
            if (boss.style.display !== 'none' && myHitOther(id, 'bossShark')) {
                h.style.left = "-500px"; clearInterval(timer); 
                bossHP--; updateUI();
                if (bossHP <= 0) { 
-                   boss.style.display = 'none'; myGold += 50; updateUI();
-                   if (!endlessMode) { gameActive = false; document.getElementById('victoryOverlay').style.display = 'block'; }
+                   boss.style.display = 'none'; 
+                   if (!endlessMode) { 
+                       gameActive = false; 
+                       document.getElementById('levelTransition').style.display = 'block'; 
+                   } else { myGold += 50; }
                }
            }
        }, 20);
+   }
+
+   function myHitOther(my1, my2) {
+       const b1 = document.getElementById(my1).getBoundingClientRect();
+       const b2 = document.getElementById(my2).getBoundingClientRect();
+       return !(b1.right < b2.left || b1.left > b2.right || b1.bottom < b2.top || b1.top > b2.bottom);
    }
 
    function killEnemy(id, index) {
@@ -187,7 +176,6 @@
 
    function openShop() { inShop = true; document.getElementById('shopOverlay').style.display = 'block'; document.getElementById('shopGold').innerText = myGold; }
    function closeShop() { inShop = false; document.getElementById('shopOverlay').style.display = 'none'; startWave(); }
-   
    function buy(item) {
        if (item === 'health' && myGold >= 5) { myGold -= 5; playerHealth = playerMaxHealth; }
        else if (item === 'speed' && myGold >= 10) { myGold -= 10; playerSpeed += 8; }
@@ -195,25 +183,18 @@
        updateUI(); document.getElementById('shopGold').innerText = myGold;
    }
 
-   // MAIN LOOP
    setInterval(() => {
        if (!gameActive || inShop) return;
        let p = document.getElementById('myImg01');
        let px = parseFloat(p.style.left), py = parseFloat(p.style.top);
-       
-       // Gravity
        if (py < window.innerHeight - 80) p.style.top = (py + 1.5) + 'px';
-       
-       // Boss Movement
        let boss = document.getElementById('bossShark');
        if (boss.style.display !== 'none') {
            let bx = parseFloat(boss.style.left), by = parseFloat(boss.style.top);
            boss.style.left = (bx < px ? bx + (enemyBaseSpeed * 0.7) : bx - (enemyBaseSpeed * 0.7)) + 'px';
            boss.style.top = (by < py ? by + (enemyBaseSpeed * 0.7) : by - (enemyBaseSpeed * 0.7)) + 'px';
-           if (myHitOther('myImg01', 'bossShark')) { playerHealth -= 0.1; updateUI(); }
+           if (myHitOther('myImg01', 'bossShark')) { playerHealth -= 0.05; updateUI(); }
        }
-
-       // Shark Movement
        activeEnemies.forEach(id => {
            let e = document.getElementById(id); if(!e) return;
            let ex = parseFloat(e.style.left), ey = parseFloat(e.style.top);
@@ -221,9 +202,10 @@
            e.style.top = (ey < py ? ey + enemyBaseSpeed : ey - enemyBaseSpeed) + 'px';
            if (myHitOther('myImg01', id)) { playerHealth -= 1; e.style.left = (ex + 200) + 'px'; updateUI(); }
        });
-
        if (playerHealth <= 0) { gameActive = false; document.getElementById('overlay').style.display='block'; }
    }, 40);
+
+   window.onload = initGame;
 </script>
 </head>
 
@@ -237,26 +219,22 @@
     if (event.key == 's' && y < window.innerHeight - 60) p.style.top = (y + playerSpeed) + 'px';
 ">
 
-<div id="menu">
-    <h1>SHARK HUNTER</h1>
-    <div id="highScoreDisplay" style="margin-bottom: 20px;"></div>
-    <button onclick="selectMode(false)">STORY MODE</button>
-    <button onclick="selectMode(true)">ENDLESS WAVE MODE</button>
-</div>
-
 <div id="healthContainer"><div id="healthBar"></div></div>
-
-<div id="bossUI">
-    <label>Great White Shark</label>
-    <div id="bossHealthContainer"><div id="bossHealthBar"></div></div>
-</div>
+<div id="bossUI"><label>Level Boss</label><div id="bossHealthContainer"><div id="bossHealthBar"></div></div></div>
 
 <div class="stats">
-    <span id="waveDisplay"></span><br>
-    <span id="scoreDisplay">Gold: 10</span>
+    <span id="waveDisplay">Level 1</span><br>
+    <span id="scoreDisplay">Gold: 10</span><br>
+    <div id="highScoreDisplay"></div>
 </div>
 
-<div id="shopOverlay" style="display:none;">
+<div id="levelTransition">
+    <h1 style="color: #ffd700;">LEVEL 1 COMPLETE!</h1>
+    <p>You have defeated the Great Shark. Now, survive the endless depths...</p>
+    <button onclick="startEndlessMode()">ENTER ENDLESS MODE</button>
+</div>
+
+<div id="shopOverlay">
     <h1>SHOP OPEN</h1>
     <p>Gold: <span id="shopGold">0</span></p>
     <div class="shop-item"><h3>Full Heal</h3><p>5 Gold</p><button onclick="buy('health')">Buy</button></div>
@@ -266,7 +244,6 @@
 </div>
 
 <div id="overlay"><h1>GAME OVER</h1><button onclick="location.reload()">RESTART</button></div>
-<div id="victoryOverlay"><h1>VICTORY!</h1><p>The Ocean is Safe.</p><button onclick="location.reload()">MAIN MENU</button></div>
 
 <img id="myImg01" src="ignore/meowl.png" onerror="fixImg(this, 'Player', 'orange')" style="position:absolute; width:60px; height:60px; left:50px; top:200px;">
 <img id="bossShark" src="ignore/BaskingShark.jpg" onerror="fixImg(this, 'BOSS', 'red')" style="position:absolute; width:220px; height:120px; left:1200px; top:200px; border:4px solid red; display:none;">
