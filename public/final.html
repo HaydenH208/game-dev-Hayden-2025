@@ -5,18 +5,20 @@
 <style>
     body { background-color: #004d7a; overflow:hidden; margin:0; font-family: 'Segoe UI', sans-serif; }
     
+    /* Added display:none so it doesn't show at start */
     #menu, #overlay, #shopOverlay {
         position: fixed; top: 0; left: 0; width: 100%; height: 100%;
         background: rgba(0,20,40,0.9); color: white; text-align: center; 
         padding-top: 10%; z-index: 200;
     }
+    #overlay { display: none; } 
+
     #healthContainer {
         position: fixed; top: 20px; left: 20px; width: 200px; height: 25px; 
         background: #333; border: 2px solid white; z-index: 50;
     }
     #healthBar { width: 100%; height: 100%; background: #4CAF50; transition: width 0.3s; }
     
-    /* High Score Table */
     .stats { 
         position: fixed; top: 10px; right: 20px; color: white; text-align: right;
         background: rgba(0,0,0,0.5); padding: 10px; border-radius: 5px; font-size: 16px;
@@ -37,7 +39,8 @@
     .shop-item { display: inline-block; width: 200px; padding: 15px; border: 1px solid #008CBA; margin: 10px; background: rgba(255,255,255,0.1); }
 </style>
 <script>
-   let myScore = 10;
+   let myGold = 10;        // Separated Gold
+   let playerHealth = 10;   // Separated Health
    let playerMaxHealth = 10;
    let bossHP = 5;
    let gameActive = false;
@@ -49,13 +52,12 @@
    let playerSpeed = 25;
    let activeEnemies = [];
 
-   // --- HIGH SCORE LOGIC ---
    function updateHighScores() {
        let bestWave = localStorage.getItem('sharkBestWave') || 0;
        let bestGold = localStorage.getItem('sharkBestGold') || 0;
 
        if (endlessMode && wave > bestWave) localStorage.setItem('sharkBestWave', wave);
-       if (myScore > bestGold) localStorage.setItem('sharkBestGold', myScore);
+       if (myGold > bestGold) localStorage.setItem('sharkBestGold', myGold);
        
        renderScoreboard();
    }
@@ -64,13 +66,12 @@
        let bWave = localStorage.getItem('sharkBestWave') || 0;
        let bGold = localStorage.getItem('sharkBestGold') || 0;
        
-       document.getElementById('waveDisplay').innerText = endlessMode ? "Wave: " + wave : "Normal Mode";
-       document.getElementById('scoreDisplay').innerText = "Gold: " + myScore;
+       document.getElementById('waveDisplay').innerText = endlessMode ? "Wave: " + wave : "Story Mode";
+       document.getElementById('scoreDisplay').innerText = "Gold: " + myGold;
        document.getElementById('highScoreDisplay').innerHTML = 
            `<span class="best">BEST WAVE: ${bWave}</span><br><span class="best">BEST GOLD: ${bGold}</span>`;
    }
 
-   // --- Setup ---
    function selectMode(isEndless) {
        endlessMode = isEndless;
        document.getElementById('menu').style.display = 'none';
@@ -85,7 +86,7 @@
 
    function updateUI() {
        let hBar = document.getElementById('healthBar');
-       let pct = (myScore / playerMaxHealth) * 100;
+       let pct = (playerHealth / playerMaxHealth) * 100;
        hBar.style.width = Math.max(0, pct) + "%";
        hBar.style.background = pct < 30 ? "#ff4444" : "#4CAF50";
        renderScoreboard();
@@ -105,7 +106,7 @@
    function spawnShark(id) {
        let img = document.createElement('img');
        img.id = id;
-       img.src = "ignore/BaskingShark.jpg";
+       img.src = "https://via.placeholder.com/80x40/blue/white?text=Shark"; // Placeholder if image missing
        img.style.position = "absolute"; img.style.width = "80px"; img.style.height = "40px";
        img.style.left = (window.innerWidth + Math.random() * 500) + "px";
        img.style.top = Math.random() * (window.innerHeight - 100) + "px";
@@ -154,7 +155,7 @@
            });
            if (myHitOther(id, 'bossShark')) {
                h.style.left = "-500px"; clearInterval(timer); bossHP--;
-               if (bossHP <= 0) { document.getElementById('bossShark').style.display = 'none'; myScore += 20; updateUI(); }
+               if (bossHP <= 0) { document.getElementById('bossShark').style.display = 'none'; myGold += 20; updateUI(); }
            }
        }, 20);
        setTimeout(() => { clearInterval(timer); h.style.left = "-500px"; }, 6000);
@@ -163,17 +164,18 @@
    function killEnemy(id, index) {
        let e = document.getElementById(id); if (!e) return;
        e.remove(); activeEnemies.splice(index, 1);
-       myScore += 2; updateUI();
+       myGold += 2; updateUI();
        if (endlessMode && activeEnemies.length === 0) { if (wave % 2 === 0) openShop(); else startWave(); }
    }
 
-   function openShop() { inShop = true; document.getElementById('shopOverlay').style.display = 'block'; document.getElementById('shopGold').innerText = myScore; }
+   function openShop() { inShop = true; document.getElementById('shopOverlay').style.display = 'block'; document.getElementById('shopGold').innerText = myGold; }
    function closeShop() { inShop = false; document.getElementById('shopOverlay').style.display = 'none'; startWave(); }
+   
    function buy(item) {
-       if (item === 'health' && myScore >= 5) { myScore -= 5; myScore = playerMaxHealth; }
-       else if (item === 'speed' && myScore >= 10) { myScore -= 10; playerSpeed += 8; }
-       else if (item === 'triple' && myScore >= 15) { myScore -= 15; tripleShot = true; }
-       updateUI(); document.getElementById('shopGold').innerText = myScore;
+       if (item === 'health' && myGold >= 5) { myGold -= 5; playerHealth = playerMaxHealth; }
+       else if (item === 'speed' && myGold >= 10) { myGold -= 10; playerSpeed += 8; }
+       else if (item === 'triple' && myGold >= 15) { myGold -= 15; tripleShot = true; }
+       updateUI(); document.getElementById('shopGold').innerText = myGold;
    }
 
    setInterval(() => {
@@ -181,22 +183,29 @@
        let p = document.getElementById('myImg01');
        let top = parseFloat(p.style.top || 200);
        if (top < 550) p.style.top = (top + 2) + 'px';
+       
        activeEnemies.forEach(id => {
            let e = document.getElementById(id);
+           if(!e) return;
            let ex = parseFloat(e.style.left), ey = parseFloat(e.style.top);
            let px = parseFloat(p.style.left), py = parseFloat(p.style.top);
            e.style.left = (ex < px ? ex + enemyBaseSpeed : ex - enemyBaseSpeed) + 'px';
            e.style.top = (ey < py ? ey + enemyBaseSpeed : ey - enemyBaseSpeed) + 'px';
-           if (myHitOther('myImg01', id)) { p.style.left = '20px'; myScore--; updateUI(); }
+           
+           if (myHitOther('myImg01', id)) { 
+               p.style.left = '20px'; 
+               playerHealth -= 1; // Take damage instead of losing gold
+               updateUI(); 
+           }
        });
-       if (myScore <= 0) { 
+
+       if (playerHealth <= 0) { 
            gameActive = false; 
-           updateHighScores(); // Check and save record on death
+           updateHighScores();
            document.getElementById('overlay').style.display='block'; 
        }
    }, 40);
 
-   // Load scores immediately on startup
    window.onload = renderScoreboard;
 </script>
 </head>
@@ -237,9 +246,9 @@
     <button onclick="location.reload()">RESTART</button>
 </div>
 
-<img id="myImg01" src="ignore/meowl.png" style="position:absolute; width:60px; height:60px; left:50px; top:200px;">
-<img id="bossShark" src="ignore/BaskingShark.jpg" style="position:absolute; width:220px; height:120px; left:1200px; top:200px; border:4px solid red; display:none;">
-<img id="myImg04" src="ignore/liljit.jpg" style="position:absolute; width:60px; height:60px; left:1100px; top:500px; display:none;">
+<img id="myImg01" src="https://via.placeholder.com/60/white/black?text=Owl" style="position:absolute; width:60px; height:60px; left:50px; top:200px;">
+<img id="bossShark" src="https://via.placeholder.com/220x120/red/white?text=BOSS" style="position:absolute; width:220px; height:120px; left:1200px; top:200px; border:4px solid red; display:none;">
+<img id="myImg04" src="https://via.placeholder.com/60/green/white?text=NPC" style="position:absolute; width:60px; height:60px; left:1100px; top:500px; display:none;">
 
 <div id="hp1" class="harpoon"></div>
 <div id="hpB" class="harpoon"></div>
