@@ -1,26 +1,87 @@
 <h2 align="center">T1a08-in-out-hayden</h2>
+
 <a href="https://www.w3schools.com/jsref/prop_html_innerhtml.asp">
   Good reference to input/output JavaScript innerHTML value by Hayden
 </a>
 
-<h4>Example working code</h4>
+<hr>
+
+<h4>Number input → math output</h4>
 
 <input id="myNum01" type="number" value="4"><br>
-<input type="button" value="myEvent squares" onclick="{
+<input type="button" value="Square number" onclick="{
   let myIn01 = parseFloat(document.getElementById('myNum01').value);
   let myAnswer = myIn01 * myIn01;
-  document.getElementById('myDiv01').innerHTML = myIn01 + ' squared = ' + myAnswer;
+  document.getElementById('myDiv01').innerHTML =
+    myIn01 + ' squared = ' + myAnswer;
 }"><br><br>
 
+<input type="button" value="Double number" onclick="{
+  let x = parseFloat(document.getElementById('myNum01').value);
+  document.getElementById('myDiv01').innerHTML =
+    x + ' doubled = ' + (x * 2);
+}"><br><br>
+
+<hr>
+
+<h4>Text input → text output</h4>
+
 <input type="text" id="username" placeholder="please enter username">
-<button onclick="showname()">Submit</button>
+<button onclick="showname()">Submit</button><br><br>
+
+<input type="button" value="Show name length" onclick="{
+  let name = document.getElementById('username').value;
+  document.getElementById('myDiv01').innerHTML =
+    'Your name has ' + name.length + ' characters';
+}"><br><br>
+
+<hr>
+
+<h4>Multiple inputs → output</h4>
+
+<input id="myNum02" type="number" placeholder="first number">
+<input id="myNum03" type="number" placeholder="second number"><br><br>
+
+<input type="button" value="Add numbers" onclick="{
+  let a = parseFloat(document.getElementById('myNum02').value);
+  let b = parseFloat(document.getElementById('myNum03').value);
+  document.getElementById('myDiv01').innerHTML =
+    a + ' + ' + b + ' = ' + (a + b);
+}"><br><br>
+
+<hr>
+
+<h4>Conditional output</h4>
+
+<input type="button" value="Check age" onclick="{
+  let age = parseInt(document.getElementById('myNum01').value);
+  if (age >= 18) {
+    document.getElementById('myDiv01').innerHTML = 'You are an adult';
+  } else {
+    document.getElementById('myDiv01').innerHTML = 'You are under 18';
+  }
+}"><br><br>
+
+<hr>
+
+<h4>Checkbox input → output</h4>
+
+<input type="checkbox" id="myCheck01"> I like JavaScript<br><br>
+
+<input type="button" value="Check box status" onclick="{
+  let checked = document.getElementById('myCheck01').checked;
+  document.getElementById('myDiv01').innerHTML =
+    checked ? 'You like JavaScript 👍' : 'You do not like JavaScript 😢';
+}"><br><br>
+
+<hr>
 
 <div id="myDiv01">...</div>
 
 <script>
 function showname() {
   let name = document.getElementById('username').value;
-  document.getElementById('myDiv01').innerHTML = "Hello, " + name + "!";
+  document.getElementById('myDiv01').innerHTML =
+    'Hello, ' + name + '!';
 }
 </script>
-
