@@ -9,15 +9,49 @@
 
   <input id="mynum01" type="number" value="4"> <br><br>
 
-  <input type="button" value="myEvent squares" onclick="{
+  <!-- FOR LOOP -->
+  <input type="button" value="For loop" onclick="{
     let myTemp = '';
-    document.getElementById('myDiv01').innerHTML = '';
     for (let x = 0; x < 10; x++) {
       if (x == 3) {
         myTemp += x + ' third <br>';
       } else {
         myTemp += x + '<br>';
       }
+    }
+    document.getElementById('myDiv01').innerHTML = myTemp;
+  }"><br><br>
+
+  <!-- WHILE LOOP -->
+  <input type="button" value="While loop" onclick="{
+    let myTemp = '';
+    let x = 0;
+    while (x < 10) {
+      myTemp += x + '<br>';
+      x++;
+    }
+    document.getElementById('myDiv01').innerHTML = myTemp;
+  }"><br><br>
+
+  <!-- DO WHILE LOOP -->
+  <input type="button" value="Do-While loop" onclick="{
+    let myTemp = '';
+    let x = 0;
+    do {
+      myTemp += x + '<br>';
+      x++;
+    } while (x < 10);
+    document.getElementById('myDiv01').innerHTML = myTemp;
+  }"><br><br>
+
+  <!-- NESTED LOOP -->
+  <input type="button" value="Nested loop" onclick="{
+    let myTemp = '';
+    for (let row = 1; row <= 5; row++) {
+      for (let col = 1; col <= 5; col++) {
+        myTemp += row + ',' + col + ' ';
+      }
+      myTemp += '<br>';
     }
     document.getElementById('myDiv01').innerHTML = myTemp;
   }"><br><br>
